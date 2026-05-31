@@ -1,0 +1,36 @@
+name: siegeconnect
+description: SiegeConnect cross-platform VPN client for Remnawave subscriptions and Mihomo.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  collection: ^1.18.0
+  dio: ^5.7.0
+  flutter_riverpod: ^2.6.1
+  intl: ^0.20.2
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
+  path: ^1.9.0
+  path_provider: ^2.1.5
+  yaml: ^3.1.2
+  yaml_writer: ^2.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.13
+  flutter_lints: ^5.0.0
+  isar_generator: ^3.1.0+1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
