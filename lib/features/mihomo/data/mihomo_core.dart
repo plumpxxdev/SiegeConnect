@@ -147,12 +147,14 @@ class MihomoCore {
       await _stopWindowsSiegeMihomoProcesses();
     }
 
+    final executable = await _findMihomoExecutable();
+    await _testMihomoConfig(executable, configPath);
+
     if (Platform.isWindows && settings.tunMode && !await isAdministrator()) {
       await _startWindowsTunTask(configPath);
       return;
     }
 
-    final executable = await _findMihomoExecutable();
     if (Platform.isWindows) {
       _desktopPid = await _startWindowsHiddenProcess(
         executable.path,
@@ -285,6 +287,27 @@ class MihomoCore {
 
     _startedViaWindowsTask = true;
     await _waitForController(timeout: _controllerReadyTimeout);
+  }
+
+  Future<void> _testMihomoConfig(File executable, String configPath) async {
+    final result = await Process.run(
+      executable.path,
+      ['-t', '-f', configPath],
+      workingDirectory: executable.parent.path,
+    ).timeout(const Duration(seconds: 12));
+    if (result.exitCode == 0) {
+      return;
+    }
+
+    final details = '${result.stdout}\n${result.stderr}'
+        .trim()
+        .split('\n')
+        .where((line) => line.trim().isNotEmpty)
+        .take(8)
+        .join('\n');
+    throw StateError(
+      'Mihomo отклонил конфиг выбранного сервера.\n$details',
+    );
   }
 
   Future<void> _waitForController({required Duration timeout}) async {

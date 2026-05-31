@@ -9,9 +9,8 @@ class MihomoYamlMergeService {
   const MihomoYamlMergeService();
 
   static const russianBypassRules = <String>[
-    'GEOSITE,ru,DIRECT',
-    'GEOIP,ru,DIRECT',
     'DOMAIN-SUFFIX,ru,DIRECT',
+    'GEOIP,RU,DIRECT,no-resolve',
   ];
 
   String buildMergedConfig(

@@ -1166,6 +1166,19 @@ class _ConnectionDock extends StatelessWidget {
                       label: 'Пинг',
                       value: node == null ? '—' : _delayLabel(node.delayMs),
                     ),
+                    if (connection.phase == VpnConnectionPhase.error &&
+                        connection.message?.isNotEmpty == true) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        connection.message!,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFFFFA0A8),
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ],
                   ],
                 );
 

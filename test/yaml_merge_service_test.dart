@@ -20,9 +20,8 @@ rules:
 
     final merged = const MihomoYamlMergeService().buildMergedConfig(original);
 
-    expect(merged, contains('GEOSITE,ru,DIRECT'));
-    expect(merged, contains('GEOIP,ru,DIRECT'));
     expect(merged, contains('DOMAIN-SUFFIX,ru,DIRECT'));
+    expect(merged, contains('GEOIP,RU,DIRECT,no-resolve'));
     expect(merged, contains('MATCH,PROXY'));
     expect(merged, contains('mixed-port: 7890'));
     expect(merged, contains('strict-route'));
