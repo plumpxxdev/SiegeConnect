@@ -25,6 +25,7 @@ class MihomoCore {
   bool _startedViaWindowsTask = false;
   bool _systemProxyEnabled = false;
   _WindowsProxySnapshot? _previousProxy;
+  static const _controllerReadyTimeout = Duration(seconds: 18);
 
   Future<void> start({
     required String configPath,
@@ -108,7 +109,7 @@ class MihomoCore {
       'http://${AppConstants.controllerAddress}/proxies/$encodedGroup',
     );
 
-    for (var attempt = 0; attempt < 40; attempt++) {
+    for (var attempt = 0; attempt < 18; attempt++) {
       final client = HttpClient();
       try {
         final request =
@@ -127,7 +128,7 @@ class MihomoCore {
         client.close(force: true);
       }
 
-      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 350));
     }
 
     return false;
@@ -142,6 +143,9 @@ class MihomoCore {
     }
 
     await _stopDesktop();
+    if (Platform.isWindows) {
+      await _stopWindowsSiegeMihomoProcesses();
+    }
 
     if (Platform.isWindows && settings.tunMode && !await isAdministrator()) {
       await _startWindowsTunTask(configPath);
@@ -164,8 +168,9 @@ class MihomoCore {
       );
     }
 
+    await _waitForController(timeout: _controllerReadyTimeout);
+
     if (Platform.isWindows && !settings.tunMode) {
-      await Future<void>.delayed(const Duration(milliseconds: 700));
       await _enableWindowsSystemProxy();
     }
   }
@@ -279,6 +284,54 @@ class MihomoCore {
     }
 
     _startedViaWindowsTask = true;
+    await _waitForController(timeout: _controllerReadyTimeout);
+  }
+
+  Future<void> _waitForController({required Duration timeout}) async {
+    final deadline = DateTime.now().add(timeout);
+    Object? lastError;
+
+    while (DateTime.now().isBefore(deadline)) {
+      final client = HttpClient();
+      try {
+        final request = await client
+            .getUrl(
+                Uri.parse('http://${AppConstants.controllerAddress}/version'))
+            .timeout(const Duration(milliseconds: 900));
+        final response =
+            await request.close().timeout(const Duration(milliseconds: 900));
+        await response.drain<void>();
+        if (response.statusCode >= 200 && response.statusCode < 500) {
+          return;
+        }
+        lastError = 'HTTP ${response.statusCode}';
+      } catch (error) {
+        lastError = error;
+      } finally {
+        client.close(force: true);
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+    }
+
+    throw StateError(
+      'Mihomo не поднялся за ${timeout.inSeconds} сек. '
+      'Проверь подписку/узел или переустанови SiegeConnect-Setup.exe. '
+      'Последняя ошибка: $lastError',
+    );
+  }
+
+  Future<void> _stopWindowsSiegeMihomoProcesses() async {
+    if (!Platform.isWindows) {
+      return;
+    }
+
+    final script = r'''
+Get-CimInstance Win32_Process -Filter "name = 'mihomo.exe'" |
+  Where-Object { $_.CommandLine -like '*SiegeConnect*' } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+''';
+    await _runPowerShell(script);
   }
 
   Future<void> _stopWindowsRuntimeMihomo(String runtimeConfig) async {

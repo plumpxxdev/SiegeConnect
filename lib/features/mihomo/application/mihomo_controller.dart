@@ -43,22 +43,33 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
     );
 
     try {
-      await core.start(configPath: configPath, settings: settings);
+      await core
+          .start(configPath: configPath, settings: settings)
+          .timeout(const Duration(seconds: 28));
       if (!_isCurrentRun(runId)) {
         return;
       }
 
-      await core.trySelectProxy(
-        groupName: AppConstants.proxyGroupName,
-        proxyName: node.name,
-      );
+      final proxySelected = await core
+          .trySelectProxy(
+            groupName: AppConstants.proxyGroupName,
+            proxyName: node.name,
+          )
+          .timeout(const Duration(seconds: 14), onTimeout: () => false);
+      if (!proxySelected) {
+        throw StateError(
+          'Mihomo запустился, но группу PROXY не удалось переключить на выбранный сервер.',
+        );
+      }
       if (!_isCurrentRun(runId)) {
         return;
       }
 
       String? ip;
       try {
-        ip = await _ref.read(publicIpProvider.future);
+        ip = await _ref
+            .read(publicIpProvider.future)
+            .timeout(const Duration(seconds: 7));
       } catch (_) {
         ip = null;
       }
@@ -82,6 +93,11 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
     } catch (error) {
       if (!_isCurrentRun(runId)) {
         return;
+      }
+      try {
+        await core.stop();
+      } catch (_) {
+        // The original connection error is more useful for the UI.
       }
       state = PxxConnectionState(
         phase: VpnConnectionPhase.error,
