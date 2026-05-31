@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $dist = Join-Path $root "dist"
@@ -40,7 +40,7 @@ using System.Windows.Forms;
 internal static class Program
 {
     internal const string AppName = "SiegeConnect";
-    internal const string AppVersion = "0.1.2";
+    internal const string AppVersion = "0.1.3";
     internal const string TaskName = "SiegeConnectMihomo";
 
     [STAThread]
@@ -761,6 +761,7 @@ if (-not $csc) {
   /nologo `
   /target:winexe `
   /platform:x64 `
+  /codepage:65001 `
   /out:$setupExe `
   /win32manifest:$manifest `
   /resource:$payload,payload.zip `
