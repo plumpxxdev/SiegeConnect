@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/countries.dart';
+import '../../../shared/privacy.dart';
 import '../../../shared/widgets/async_value_view.dart';
 import '../../mihomo/application/mihomo_controller.dart';
 import '../../mihomo/domain/connection_state.dart';
@@ -35,6 +36,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   DateTime? _lastRefreshAllAt;
   bool _refreshingAll = false;
   String? _lastTrayTooltip;
+
+  @override
+  void initState() {
+    super.initState();
+    _trayChannel.setMethodCallHandler(_handleTrayCommand);
+  }
+
+  @override
+  void dispose() {
+    _trayChannel.setMethodCallHandler(null);
+    super.dispose();
+  }
+
+  Future<void> _handleTrayCommand(MethodCall call) async {
+    switch (call.method) {
+      case 'connectSelected':
+        final connection = ref.read(mihomoControllerProvider);
+        if (connection.isBusy || connection.isConnected) {
+          return;
+        }
+        final node = await ref.read(selectedNodeProvider.future);
+        if (!mounted) {
+          return;
+        }
+        await _connect(context, node);
+        return;
+      case 'disconnect':
+        final connection = ref.read(mihomoControllerProvider);
+        if (!connection.isConnected && !connection.isBusy) {
+          return;
+        }
+        await ref.read(mihomoControllerProvider.notifier).disconnect();
+        return;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -425,7 +461,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(content: Text(redactNetworkText(message))),
     );
   }
 
@@ -445,7 +481,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final tooltip = [
       AppConstants.appName,
       status,
-      if (nodeName != null && nodeName.isNotEmpty) nodeName,
+      if (nodeName != null && nodeName.isNotEmpty)
+        redactNetworkText(cleanNodeName(nodeName)),
       if (protocol != null && protocol.isNotEmpty) protocol.toUpperCase(),
     ].join('\n');
 
@@ -1114,9 +1151,7 @@ class _ConnectionDock extends StatelessWidget {
                           ),
                     const SizedBox(height: 3),
                     Text(
-                      node == null
-                          ? '—'
-                          : '${node.server}:${node.port} | ${node.type.toUpperCase()}',
+                      node == null ? '—' : _nodeProtocolLabel(node),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1150,9 +1185,7 @@ class _ConnectionDock extends StatelessWidget {
                     const SizedBox(height: 10),
                     _DockMetric(
                       label: 'IP',
-                      value: connection.currentIp?.isNotEmpty == true
-                          ? connection.currentIp!
-                          : '—',
+                      value: connection.isConnected ? 'скрыт' : '—',
                     ),
                     const SizedBox(height: 6),
                     _DockMetric(
@@ -1170,7 +1203,7 @@ class _ConnectionDock extends StatelessWidget {
                         connection.message?.isNotEmpty == true) ...[
                       const SizedBox(height: 10),
                       Text(
-                        connection.message!,
+                        redactNetworkText(connection.message!),
                         maxLines: 4,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1349,7 +1382,7 @@ class _CountryServerTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${node.type.toUpperCase()} • ${node.server}:${node.port}',
+                      '${node.type.toUpperCase()} • адрес скрыт',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1430,7 +1463,7 @@ class _AutoRouteTile extends StatelessWidget {
                     Text(
                       bestNode == null
                           ? 'лучший пинг'
-                          : '${cleanNodeName(bestNode!.name)} • ${bestNode!.delayMs} ms',
+                          : '${_displayNodeName(bestNode!.name)} • ${bestNode!.delayMs} ms',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1465,7 +1498,7 @@ class _NodeTitle extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       text: TextSpan(
         style: effectiveStyle,
-        children: _nodeTitleSpans(cleanNodeName(name), effectiveStyle),
+        children: _nodeTitleSpans(_displayNodeName(name), effectiveStyle),
       ),
     );
   }
@@ -1532,7 +1565,7 @@ class _AutoMini extends StatelessWidget {
       label: Text(
         bestNode == null
             ? 'Авто'
-            : 'Авто: ${cleanNodeName(bestNode!.name)} / ${bestNode!.delayMs} ms',
+            : 'Авто: ${_displayNodeName(bestNode!.name)} / ${bestNode!.delayMs} ms',
         overflow: TextOverflow.ellipsis,
       ),
     );
@@ -2036,6 +2069,21 @@ String _formatBytes(int value) {
     unit++;
   }
   return '${size.toStringAsFixed(size >= 10 ? 0 : 1)} ${units[unit]}';
+}
+
+String _displayNodeName(String name) {
+  return redactNetworkText(cleanNodeName(name));
+}
+
+String _nodeProtocolLabel(VpnNode node) {
+  final parts = <String>[node.type.toUpperCase()];
+  if (node.network.trim().isNotEmpty) {
+    parts.add(node.network.toUpperCase());
+  }
+  if (node.security.trim().isNotEmpty) {
+    parts.add(node.security.toUpperCase());
+  }
+  return parts.join(' • ');
 }
 
 String? _countryCodeForNode(VpnNode? node) {

@@ -38,6 +38,8 @@ class FlutterWindow : public Win32Window {
   static constexpr UINT kTrayIconId = 1;
   static constexpr UINT kTrayMenuOpen = 1001;
   static constexpr UINT kTrayMenuExit = 1002;
+  static constexpr UINT kTrayMenuConnectSelected = 1003;
+  static constexpr UINT kTrayMenuDisconnect = 1004;
 
   // The project to run.
   flutter::DartProject project_;

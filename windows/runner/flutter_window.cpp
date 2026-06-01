@@ -188,6 +188,11 @@ void FlutterWindow::ShowTrayMenu() {
   AppendMenuW(menu, MF_STRING, kTrayMenuOpen,
               L"\x041e\x0442\x043a\x0440\x044b\x0442\x044c");
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+  AppendMenuW(menu, MF_STRING, kTrayMenuConnectSelected,
+              L"\x041f\x043e\x0434\x043a\x043b\x044e\x0447\x0438\x0442\x044c \x043a \x0432\x044b\x0431\x0440\x0430\x043d\x043d\x043e\x043c\x0443");
+  AppendMenuW(menu, MF_STRING, kTrayMenuDisconnect,
+              L"\x041e\x0442\x043a\x043b\x044e\x0447\x0438\x0442\x044c VPN");
+  AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
   AppendMenuW(menu, MF_STRING, kTrayMenuExit,
               L"\x0412\x044b\x0445\x043e\x0434");
 
@@ -199,6 +204,18 @@ void FlutterWindow::ShowTrayMenu() {
 
   if (command == kTrayMenuOpen) {
     ShowFromTray();
+  } else if (command == kTrayMenuConnectSelected) {
+    if (tray_channel_) {
+      tray_channel_->InvokeMethod(
+          "connectSelected",
+          std::make_unique<flutter::EncodableValue>());
+    }
+  } else if (command == kTrayMenuDisconnect) {
+    if (tray_channel_) {
+      tray_channel_->InvokeMethod(
+          "disconnect",
+          std::make_unique<flutter::EncodableValue>());
+    }
   } else if (command == kTrayMenuExit) {
     RemoveTrayIcon();
     DestroyWindow(GetHandle());

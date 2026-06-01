@@ -6,6 +6,7 @@ import '../../mihomo/application/mihomo_controller.dart';
 import '../../subscription/data/subscription_repository.dart';
 import '../../settings/application/settings_controller.dart';
 import '../../settings/domain/app_settings.dart';
+import '../../../shared/privacy.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -88,8 +89,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         _mutate((settings) => settings.killSwitch = enabled),
                   ),
                   SwitchListTile(
-                    title: const Text('РФ напрямую'),
-                    subtitle: const Text('GEOSITE/GEOIP/DOMAIN-SUFFIX ru'),
+                    title: const Text('Обход .ru доменов'),
+                    subtitle: const Text(
+                      'Когда включено, .ru и российские IP идут напрямую',
+                    ),
                     value: draft.bypassRussia,
                     onChanged: (enabled) =>
                         _mutate((settings) => settings.bypassRussia = enabled),
@@ -248,7 +251,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       : items
                           .map(
                             (item) => '[${item.createdAt.toIso8601String()}] '
-                                '${item.level}/${item.source}: ${item.message}',
+                                '${item.level}/${item.source}: '
+                                '${redactNetworkText(item.message)}',
                           )
                           .join('\n'),
                   style: Theme.of(context).textTheme.bodySmall,
@@ -329,7 +333,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
+          SnackBar(content: Text(redactNetworkText(error.toString()))),
         );
       }
     } finally {

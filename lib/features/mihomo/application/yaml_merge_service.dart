@@ -13,6 +13,18 @@ class MihomoYamlMergeService {
     'GEOIP,RU,DIRECT,no-resolve',
   ];
 
+  static const ipCheckerDomains = <String>[
+    '2ip.ru',
+    '2ip.io',
+    '2ip.ua',
+    'api.ipify.org',
+    'dnsleaktest.com',
+    'ifconfig.me',
+    'ipinfo.io',
+    'ipleak.net',
+    'whoer.net',
+  ];
+
   String buildMergedConfig(
     String originalYaml, {
     bool bypassRussia = true,
@@ -53,6 +65,8 @@ class MihomoYamlMergeService {
     }
 
     config['rules'] = <String>[
+      for (final domain in ipCheckerDomains)
+        'DOMAIN-SUFFIX,$domain,$proxyGroupName',
       if (bypassRussia) ...russianBypassRules,
       'MATCH,$proxyGroupName',
     ];

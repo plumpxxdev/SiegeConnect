@@ -20,6 +20,11 @@ rules:
 
     final merged = const MihomoYamlMergeService().buildMergedConfig(original);
 
+    expect(merged, contains('DOMAIN-SUFFIX,2ip.ru,PROXY'));
+    expect(
+      merged.indexOf('DOMAIN-SUFFIX,2ip.ru,PROXY'),
+      lessThan(merged.indexOf('DOMAIN-SUFFIX,ru,DIRECT')),
+    );
     expect(merged, contains('DOMAIN-SUFFIX,ru,DIRECT'));
     expect(merged, contains('GEOIP,RU,DIRECT,no-resolve'));
     expect(merged, contains('MATCH,PROXY'));
