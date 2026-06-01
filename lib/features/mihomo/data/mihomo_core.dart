@@ -34,7 +34,7 @@ class MihomoCore {
     final args = <String, Object?>{
       'configPath': configPath,
       'killSwitch': settings.killSwitch,
-      'tunMode': settings.tunMode,
+      'tunMode': Platform.isAndroid || settings.tunMode,
       'splitTunnelMode': settings.splitTunnelMode.name,
       'splitTunnelPackages': settings.splitTunnelPackages,
     };

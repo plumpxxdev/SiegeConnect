@@ -158,7 +158,7 @@ class SubscriptionRepository {
       final mergedYaml = mergeService.buildMergedConfig(
         profile.originalYaml,
         bypassRussia: settings.bypassRussia,
-        enableTun: settings.tunMode,
+        enableTun: Platform.isAndroid || settings.tunMode,
         killSwitch: settings.killSwitch,
       );
       final configPath = profile.mergedYamlPath.isEmpty
@@ -194,7 +194,7 @@ class SubscriptionRepository {
     final mergedYaml = mergeService.buildMergedConfig(
       profile.originalYaml,
       bypassRussia: settings.bypassRussia,
-      enableTun: settings.tunMode,
+      enableTun: Platform.isAndroid || settings.tunMode,
       killSwitch: settings.killSwitch,
       preferredProxyName: node.name,
     );
@@ -259,7 +259,7 @@ class SubscriptionRepository {
     final mergedYaml = mergeService.buildMergedConfig(
       yaml,
       bypassRussia: settings.bypassRussia,
-      enableTun: settings.tunMode,
+      enableTun: Platform.isAndroid || settings.tunMode,
       killSwitch: settings.killSwitch,
     );
 

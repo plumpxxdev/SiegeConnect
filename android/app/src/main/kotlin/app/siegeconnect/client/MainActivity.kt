@@ -71,24 +71,10 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun startVpn(call: MethodCall, result: MethodChannel.Result) {
-        val tunMode = call.argument<Boolean>("tunMode") ?: true
+        val tunMode = true
         val configPath = call.argument<String>("configPath")
         if (configPath.isNullOrBlank()) {
             result.error("CONFIG_PATH", "Config path is empty", null)
-            return
-        }
-
-        if (!tunMode) {
-            try {
-                AndroidMihomoProcess.start(applicationContext, configPath)
-                result.success(null)
-            } catch (error: Exception) {
-                result.error(
-                    "MIHOMO_START",
-                    error.message ?: "Mihomo start failed",
-                    error.stackTraceToString(),
-                )
-            }
             return
         }
 

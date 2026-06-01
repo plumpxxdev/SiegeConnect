@@ -26,6 +26,7 @@ object AndroidMihomoProcess {
         stop()
         val appContext = context.applicationContext
         val binary = ensureBinary(appContext)
+        val coreDir = File(appContext.filesDir, "mihomo").apply { mkdirs() }
         val runtimeConfigPath = prepareConfig(
             appContext,
             configPath,
@@ -33,8 +34,14 @@ object AndroidMihomoProcess {
             tunFileDescriptor,
         )
 
-        val running = ProcessBuilder(binary.absolutePath, "-f", runtimeConfigPath)
-            .directory(appContext.filesDir)
+        val running = ProcessBuilder(
+            binary.absolutePath,
+            "-d",
+            coreDir.absolutePath,
+            "-f",
+            runtimeConfigPath,
+        )
+            .directory(coreDir)
             .redirectErrorStream(true)
             .start()
 

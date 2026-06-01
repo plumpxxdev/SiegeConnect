@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -60,27 +62,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _SettingsSection(
                 title: 'Режим соединения',
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-                    child: SegmentedButton<ConnectionMode>(
-                      segments: const [
-                        ButtonSegment(
-                          value: ConnectionMode.proxy,
-                          icon: Icon(Icons.public),
-                          label: Text('Proxy'),
+                  if (Platform.isAndroid)
+                    const ListTile(
+                      leading: Icon(Icons.shield),
+                      title: Text('TUN'),
+                      subtitle: Text('На Android используется только туннель'),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+                      child: SegmentedButton<ConnectionMode>(
+                        segments: const [
+                          ButtonSegment(
+                            value: ConnectionMode.proxy,
+                            icon: Icon(Icons.public),
+                            label: Text('Proxy'),
+                          ),
+                          ButtonSegment(
+                            value: ConnectionMode.tun,
+                            icon: Icon(Icons.shield),
+                            label: Text('TUN'),
+                          ),
+                        ],
+                        selected: {draft.connectionMode},
+                        onSelectionChanged: (value) => _mutate(
+                          (settings) => settings.connectionMode = value.first,
                         ),
-                        ButtonSegment(
-                          value: ConnectionMode.tun,
-                          icon: Icon(Icons.shield),
-                          label: Text('TUN'),
-                        ),
-                      ],
-                      selected: {draft.connectionMode},
-                      onSelectionChanged: (value) => _mutate(
-                        (settings) => settings.connectionMode = value.first,
                       ),
                     ),
-                  ),
                   SwitchListTile(
                     title: const Text('Kill Switch'),
                     subtitle: const Text('Строгий маршрут при обрыве TUN'),

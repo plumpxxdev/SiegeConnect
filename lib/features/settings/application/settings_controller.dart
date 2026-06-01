@@ -15,10 +15,19 @@ class SettingsController extends AsyncNotifier<AppSettings> {
     final isar = await ref.watch(isarProvider.future);
     final existing = await isar.appSettings.get(1);
     if (existing != null) {
+      if (Platform.isAndroid && !existing.tunMode) {
+        existing
+          ..tunMode = true
+          ..updatedAt = DateTime.now();
+        await isar.writeTxn(() => isar.appSettings.put(existing));
+      }
       return existing;
     }
 
     final defaults = AppSettings();
+    if (Platform.isAndroid) {
+      defaults.tunMode = true;
+    }
     await isar.writeTxn(() => isar.appSettings.put(defaults));
     return defaults;
   }
@@ -28,6 +37,9 @@ class SettingsController extends AsyncNotifier<AppSettings> {
     final isar = await ref.read(isarProvider.future);
     final current = state.value ?? AppSettings();
     final next = mutate(current)..updatedAt = DateTime.now();
+    if (Platform.isAndroid) {
+      next.tunMode = true;
+    }
 
     await isar.writeTxn(() => isar.appSettings.put(next));
     await _applyStartupSetting(next.launchAtStartup);

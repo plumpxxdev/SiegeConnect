@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -568,11 +569,13 @@ class _Dashboard extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 980;
+        final androidTunOnly = defaultTargetPlatform == TargetPlatform.android;
         final top = _SubscriptionHeader(
           profile: profile,
           settings: settings,
           changingMode: changingMode,
           refreshing: refreshingAll,
+          showModeSwitch: !androidTunOnly,
           onImport: onImport,
           onRefresh: onRefresh,
           onSettings: onSettings,
@@ -667,6 +670,7 @@ class _SubscriptionHeader extends StatelessWidget {
     required this.settings,
     required this.changingMode,
     required this.refreshing,
+    required this.showModeSwitch,
     required this.onImport,
     required this.onRefresh,
     required this.onSettings,
@@ -677,6 +681,7 @@ class _SubscriptionHeader extends StatelessWidget {
   final AppSettings settings;
   final bool changingMode;
   final bool refreshing;
+  final bool showModeSwitch;
   final VoidCallback onImport;
   final VoidCallback onRefresh;
   final VoidCallback onSettings;
@@ -801,11 +806,14 @@ class _SubscriptionHeader extends StatelessWidget {
                 const SizedBox(width: 12),
               ] else
                 const Spacer(),
-              _ModeSwitch(
-                value: settings.connectionMode,
-                busy: changingMode,
-                onChanged: onModeChanged,
-              ),
+              if (showModeSwitch)
+                _ModeSwitch(
+                  value: settings.connectionMode,
+                  busy: changingMode,
+                  onChanged: onModeChanged,
+                )
+              else
+                const _TunOnlyBadge(),
             ],
           ),
         ],
@@ -1203,7 +1211,8 @@ class _ConnectionDock extends StatelessWidget {
                     const SizedBox(height: 6),
                     _DockMetric(
                       label: 'Режим',
-                      value: settings.connectionMode == ConnectionMode.tun
+                      value: defaultTargetPlatform == TargetPlatform.android ||
+                              settings.connectionMode == ConnectionMode.tun
                           ? 'TUN'
                           : 'Proxy',
                     ),
@@ -1587,6 +1596,31 @@ class _AutoMini extends StatelessWidget {
             ? 'Авто'
             : 'Авто: ${_displayNodeName(bestNode!.name)} / ${bestNode!.delayMs} ms',
         overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+class _TunOnlyBadge extends StatelessWidget {
+  const _TunOnlyBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colors.outline.withValues(alpha: 0.65)),
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.42),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.shield, size: 19, color: colors.primary),
+          const SizedBox(width: 8),
+          const Text('TUN', style: TextStyle(fontWeight: FontWeight.w900)),
+        ],
       ),
     );
   }

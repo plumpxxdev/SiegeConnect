@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -50,25 +52,27 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
         return;
       }
 
-      final proxySelected = await core
-          .trySelectProxy(
-            groupName: AppConstants.proxyGroupName,
-            proxyName: node.name,
-          )
-          .timeout(const Duration(seconds: 35), onTimeout: () => false);
-      if (!proxySelected) {
-        final controllerAvailable = await core.isControllerAvailable();
-        if (controllerAvailable) {
-          await _ref.read(logRepositoryProvider).add(
-                level: 'warn',
-                source: 'mihomo',
-                message:
-                    'PROXY group was not switched; using the first proxy from the generated config.',
-              );
-        } else {
-          throw StateError(
-            'Mihomo запустился, но группу PROXY не удалось переключить на выбранный сервер.',
-          );
+      if (!Platform.isAndroid) {
+        final proxySelected = await core
+            .trySelectProxy(
+              groupName: AppConstants.proxyGroupName,
+              proxyName: node.name,
+            )
+            .timeout(const Duration(seconds: 35), onTimeout: () => false);
+        if (!proxySelected) {
+          final controllerAvailable = await core.isControllerAvailable();
+          if (controllerAvailable) {
+            await _ref.read(logRepositoryProvider).add(
+                  level: 'warn',
+                  source: 'mihomo',
+                  message:
+                      'PROXY group was not switched; using the first proxy from the generated config.',
+                );
+          } else {
+            throw StateError(
+              'Mihomo запустился, но группу PROXY не удалось переключить на выбранный сервер.',
+            );
+          }
         }
       }
       if (!_isCurrentRun(runId)) {
