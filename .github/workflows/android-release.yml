@@ -35,6 +35,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if [ "$GITHUB_REF_NAME" = "v0.1.6" ]; then
+            gh release delete "v0.1.7" -y --cleanup-tag >/dev/null 2>&1 || true
+          fi
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
             gh release create "$GITHUB_REF_NAME" --title "SiegeConnect $GITHUB_REF_NAME" --notes "SiegeConnect release build."
           cp "build/app/outputs/flutter-apk/app-release.apk" "SiegeConnect-Android.apk"
