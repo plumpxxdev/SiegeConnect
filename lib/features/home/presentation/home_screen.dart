@@ -907,9 +907,10 @@ class _ServerPanel extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
+                SizedBox(
+                  width: double.infinity,
                   child: _AutoRouteTile(
                     bestNode: bestNode,
                     onTap: bestNode == null
@@ -917,23 +918,35 @@ class _ServerPanel extends StatelessWidget {
                         : () => onConnect(bestNode),
                   ),
                 ),
-                const SizedBox(width: 10),
-                FilterChip(
-                  label: const Text('по пингу'),
-                  selected: sortByPing,
-                  onSelected: onSortChanged,
-                ),
-                const SizedBox(width: 8),
-                FilledButton.tonalIcon(
-                  onPressed: pingingAll || nodes.isEmpty ? null : onPingAll,
-                  icon: pingingAll
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.speed),
-                  label: const Text('Обновить пинг'),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    FilterChip(
+                      label: const Text('по пингу'),
+                      selected: sortByPing,
+                      onSelected: onSortChanged,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.tonalIcon(
+                        onPressed:
+                            pingingAll || nodes.isEmpty ? null : onPingAll,
+                        icon: pingingAll
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.speed),
+                        label: const Text(
+                          'Обновить пинг',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

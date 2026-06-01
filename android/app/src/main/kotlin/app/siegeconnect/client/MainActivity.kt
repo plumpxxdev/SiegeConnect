@@ -17,18 +17,21 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "start" -> {
-                        val prepareIntent = VpnService.prepare(this)
-                        if (prepareIntent != null) {
-                            result.error("VPN_PERMISSION", "VPN permission is required", null)
-                            startActivity(prepareIntent)
-                            return@setMethodCallHandler
+                        val tunMode = call.argument<Boolean>("tunMode") ?: true
+                        if (tunMode) {
+                            val prepareIntent = VpnService.prepare(this)
+                            if (prepareIntent != null) {
+                                result.error("VPN_PERMISSION", "VPN permission is required", null)
+                                startActivity(prepareIntent)
+                                return@setMethodCallHandler
+                            }
                         }
 
                         val intent = Intent(this, PxxVpnService::class.java).apply {
                             action = PxxVpnService.ACTION_START
                             putExtra("configPath", call.argument<String>("configPath"))
                             putExtra("killSwitch", call.argument<Boolean>("killSwitch") ?: true)
-                            putExtra("tunMode", call.argument<Boolean>("tunMode") ?: true)
+                            putExtra("tunMode", tunMode)
                             putExtra("splitTunnelMode", call.argument<String>("splitTunnelMode") ?: "disabled")
                             putStringArrayListExtra(
                                 "splitTunnelPackages",

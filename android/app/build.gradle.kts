@@ -26,6 +26,13 @@ android {
         versionName = flutter.versionName
     }
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += "**/libmihomo.so"
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
