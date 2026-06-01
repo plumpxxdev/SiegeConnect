@@ -40,7 +40,7 @@ using System.Windows.Forms;
 internal static class Program
 {
     internal const string AppName = "SiegeConnect";
-    internal const string AppVersion = "0.1.5";
+    internal const string AppVersion = "0.1.6";
     internal const string TaskName = "SiegeConnectMihomo";
 
     [STAThread]

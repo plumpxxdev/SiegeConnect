@@ -1,4 +1,4 @@
-package app.pxxconnect.client
+package app.siegeconnect.client
 
 import android.content.Intent
 import android.net.VpnService
@@ -21,7 +21,7 @@ class PxxVpnService : VpnService() {
         val configPath = intent.getStringExtra("configPath") ?: return
 
         val builder = Builder()
-            .setSession("PXXConnect")
+            .setSession("SiegeConnect")
             .addAddress("10.222.0.2", 30)
             .addDnsServer("1.1.1.1")
             .addRoute("0.0.0.0", 0)
@@ -35,9 +35,7 @@ class PxxVpnService : VpnService() {
 
         tunnel = builder.establish()
 
-        // The production build should call the gomobile-bound Mihomo library here:
-        // Pxxcore.start(configPath, tunnel!!.fd)
-        // The FD must be duplicated or owned according to the final Go bridge contract.
+        // The production build should call the gomobile-bound Mihomo library here.
         MihomoNative.start(configPath, tunnel?.fd ?: -1)
     }
 
@@ -54,18 +52,17 @@ class PxxVpnService : VpnService() {
     }
 
     companion object {
-        const val ACTION_START = "app.pxxconnect.START"
-        const val ACTION_STOP = "app.pxxconnect.STOP"
+        const val ACTION_START = "app.siegeconnect.START"
+        const val ACTION_STOP = "app.siegeconnect.STOP"
     }
 }
 
 object MihomoNative {
     fun start(configPath: String, tunFd: Int) {
-        // Replace with gomobile generated binding, for example:
-        // Pxxcore.start(configPath, tunFd)
+        // Replace with gomobile generated binding.
     }
 
     fun stop() {
-        // Pxxcore.stop()
+        // Replace with gomobile generated binding.
     }
 }

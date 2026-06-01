@@ -26,6 +26,7 @@ class AppSettings {
   @Enumerated(EnumType.name)
   ThemePreference theme = ThemePreference.system;
 
+  bool themeChosen = false;
   bool autoUpdateSubscription = true;
   int autoUpdateHours = 24;
   bool bypassRussia = true;
@@ -45,6 +46,7 @@ class AppSettings {
     return AppSettings()
       ..id = id
       ..theme = theme
+      ..themeChosen = themeChosen
       ..autoUpdateSubscription = autoUpdateSubscription
       ..autoUpdateHours = autoUpdateHours
       ..bypassRussia = bypassRussia
@@ -60,6 +62,7 @@ class AppSettings {
 
   void applyFrom(AppSettings other) {
     theme = other.theme;
+    themeChosen = other.themeChosen;
     autoUpdateSubscription = other.autoUpdateSubscription;
     autoUpdateHours = other.autoUpdateHours;
     bypassRussia = other.bypassRussia;

@@ -2,8 +2,8 @@ import Flutter
 import NetworkExtension
 
 final class VpnBridge: NSObject {
-    private let vpnChannel = "app.pxxconnect/vpn"
-    private let mihomoChannel = "app.pxxconnect/mihomo"
+    private let vpnChannel = "app.siegeconnect/vpn"
+    private let mihomoChannel = "app.siegeconnect/mihomo"
 
     func register(with registrar: FlutterPluginRegistrar) {
         let messenger = registrar.messenger()
@@ -51,7 +51,7 @@ final class VpnBridge: NSObject {
 
             let manager = managers?.first ?? NETunnelProviderManager()
             let protocolConfiguration = NETunnelProviderProtocol()
-            protocolConfiguration.providerBundleIdentifier = "app.pxxconnect.client.PacketTunnel"
+            protocolConfiguration.providerBundleIdentifier = "app.siegeconnect.client.PacketTunnel"
             protocolConfiguration.serverAddress = "PXXConnect"
             protocolConfiguration.providerConfiguration = ["configPath": configPath]
 

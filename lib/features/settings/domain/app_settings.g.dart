@@ -69,13 +69,18 @@ const AppSettingsSchema = CollectionSchema(
       type: IsarType.string,
       enumMap: _AppSettingsthemeEnumValueMap,
     ),
-    r'tunMode': PropertySchema(
+    r'themeChosen': PropertySchema(
       id: 10,
+      name: r'themeChosen',
+      type: IsarType.bool,
+    ),
+    r'tunMode': PropertySchema(
+      id: 11,
       name: r'tunMode',
       type: IsarType.bool,
     ),
     r'updatedAt': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -128,8 +133,9 @@ void _appSettingsSerialize(
   writer.writeString(offsets[7], object.splitTunnelMode.name);
   writer.writeStringList(offsets[8], object.splitTunnelPackages);
   writer.writeString(offsets[9], object.theme.name);
-  writer.writeBool(offsets[10], object.tunMode);
-  writer.writeDateTime(offsets[11], object.updatedAt);
+  writer.writeBool(offsets[10], object.themeChosen);
+  writer.writeBool(offsets[11], object.tunMode);
+  writer.writeDateTime(offsets[12], object.updatedAt);
 }
 
 AppSettings _appSettingsDeserialize(
@@ -154,8 +160,9 @@ AppSettings _appSettingsDeserialize(
   object.theme =
       _AppSettingsthemeValueEnumMap[reader.readStringOrNull(offsets[9])] ??
           ThemePreference.system;
-  object.tunMode = reader.readBool(offsets[10]);
-  object.updatedAt = reader.readDateTime(offsets[11]);
+  object.themeChosen = reader.readBool(offsets[10]);
+  object.tunMode = reader.readBool(offsets[11]);
+  object.updatedAt = reader.readDateTime(offsets[12]);
   return object;
 }
 
@@ -192,6 +199,8 @@ P _appSettingsDeserializeProp<P>(
     case 10:
       return (reader.readBool(offset)) as P;
     case 11:
+      return (reader.readBool(offset)) as P;
+    case 12:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -976,6 +985,16 @@ extension AppSettingsQueryFilter
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition>
+      themeChosenEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'themeChosen',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterFilterCondition> tunModeEqualTo(
       bool value) {
     return QueryBuilder.apply(this, (query) {
@@ -1169,6 +1188,18 @@ extension AppSettingsQuerySortBy
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByThemeChosen() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'themeChosen', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByThemeChosenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'themeChosen', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> sortByTunMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'tunMode', Sort.asc);
@@ -1326,6 +1357,18 @@ extension AppSettingsQuerySortThenBy
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByThemeChosen() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'themeChosen', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByThemeChosenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'themeChosen', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QAfterSortBy> thenByTunMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'tunMode', Sort.asc);
@@ -1422,6 +1465,12 @@ extension AppSettingsQueryWhereDistinct
     });
   }
 
+  QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByThemeChosen() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'themeChosen');
+    });
+  }
+
   QueryBuilder<AppSettings, AppSettings, QDistinct> distinctByTunMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'tunMode');
@@ -1505,6 +1554,12 @@ extension AppSettingsQueryProperty
   QueryBuilder<AppSettings, ThemePreference, QQueryOperations> themeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'theme');
+    });
+  }
+
+  QueryBuilder<AppSettings, bool, QQueryOperations> themeChosenProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'themeChosen');
     });
   }
 

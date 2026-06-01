@@ -189,7 +189,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ],
                       onChanged: (theme) {
                         if (theme != null) {
-                          _mutate((settings) => settings.theme = theme);
+                          _mutate(
+                            (settings) => settings
+                              ..theme = theme
+                              ..themeChosen = true,
+                          );
                         }
                       },
                     ),

@@ -1,4 +1,4 @@
-package app.pxxconnect.client
+package app.siegeconnect.client
 
 import android.content.Intent
 import android.net.VpnService
@@ -21,7 +21,7 @@ class PxxVpnService : VpnService() {
         val configPath = intent.getStringExtra("configPath") ?: return
 
         val builder = Builder()
-            .setSession("PXXConnect")
+            .setSession("SiegeConnect")
             .addAddress("10.222.0.2", 30)
             .addDnsServer("1.1.1.1")
             .addRoute("0.0.0.0", 0)
@@ -54,8 +54,8 @@ class PxxVpnService : VpnService() {
     }
 
     companion object {
-        const val ACTION_START = "app.pxxconnect.START"
-        const val ACTION_STOP = "app.pxxconnect.STOP"
+        const val ACTION_START = "app.siegeconnect.START"
+        const val ACTION_STOP = "app.siegeconnect.STOP"
     }
 }
 

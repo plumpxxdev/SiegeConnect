@@ -1122,7 +1122,7 @@ class _ConnectionDock extends StatelessWidget {
         children: [
           Row(
             children: [
-              _FlagOrb(code: code, size: 58),
+              _NodeFlagOrb(node: node, code: code, size: 58),
               const SizedBox(width: 13),
               Expanded(
                 child: Column(
@@ -1286,8 +1286,10 @@ class _CountryServerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final code = _countryCodeForNode(node);
+    final viaCode = _viaCountryCodeForNode(node);
     final palette = _paletteFor(code);
     final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     const selectedColor = Color(0xFF36F27C);
 
     return Material(
@@ -1321,43 +1323,40 @@ class _CountryServerTile extends StatelessWidget {
                 ),
             ],
             gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
               colors: [
-                palette.first.withValues(alpha: 0.88),
+                palette.first.withValues(alpha: dark ? 0.94 : 0.9),
                 palette.length > 1
-                    ? palette[1].withValues(alpha: 0.46)
+                    ? palette[1].withValues(alpha: dark ? 0.62 : 0.5)
                     : colors.surfaceContainerHighest,
+                (palette.length > 2 ? palette[2] : palette.last)
+                    .withValues(alpha: dark ? 0.28 : 0.22),
                 colors.surfaceContainerHighest.withValues(
-                  alpha: Theme.of(context).brightness == Brightness.dark
-                      ? 0.86
-                      : 0.98,
+                  alpha: dark ? 0.78 : 0.96,
                 ),
               ],
-              stops: const [0, 0.25, 1],
+              stops: const [0, 0.18, 0.42, 1],
             ),
           ),
           child: Row(
             children: [
               SizedBox(
-                width: 88,
+                width: 82,
                 height: 64,
                 child: Stack(
-                  fit: StackFit.expand,
+                  clipBehavior: Clip.none,
                   children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.horizontal(
-                        left: Radius.circular(26),
-                      ),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: palette),
-                        ),
-                      ),
-                    ),
                     Center(child: _FlagPlate(code: code, width: 48)),
+                    if (viaCode != null)
+                      Positioned(
+                        right: 8,
+                        bottom: 7,
+                        child: _ViaFlagBadge(code: viaCode),
+                      ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1449,7 +1448,11 @@ class _AutoRouteTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _FlagOrb(code: _countryCodeForNode(bestNode), size: 38),
+              _NodeFlagOrb(
+                node: bestNode,
+                code: _countryCodeForNode(bestNode),
+                size: 38,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1537,6 +1540,10 @@ List<InlineSpan> _nodeTitleSpans(String title, TextStyle style) {
 }
 
 String? _countryCodeFromToken(String token) {
+  final flagCode = countryCodeFromFlagEmoji(token);
+  if (flagCode != null) {
+    return flagCode;
+  }
   final word = _plainWord(token);
   if (word.isEmpty) {
     return null;
@@ -1842,6 +1849,73 @@ class _FlagOrb extends StatelessWidget {
   }
 }
 
+class _NodeFlagOrb extends StatelessWidget {
+  const _NodeFlagOrb({
+    required this.node,
+    required this.code,
+    required this.size,
+  });
+
+  final VpnNode? node;
+  final String? code;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final viaCode = node == null ? null : _viaCountryCodeForNode(node!);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          _FlagOrb(code: code, size: size),
+          if (viaCode != null)
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: _ViaFlagBadge(code: viaCode),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ViaFlagBadge extends StatelessWidget {
+  const _ViaFlagBadge({required this.code});
+
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 30,
+      height: 24,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.72),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.32),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: _FlagPlate(code: code, width: 26),
+      ),
+    );
+  }
+}
+
 class _UnknownFlag extends StatelessWidget {
   const _UnknownFlag({
     required this.width,
@@ -1881,18 +1955,28 @@ class _TinyBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
+    return SizedBox(
+      width: 42,
+      height: 22,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1937,6 +2021,7 @@ class _LogoMark extends StatelessWidget {
     return Container(
       width: 46,
       height: 46,
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: const LinearGradient(
@@ -1952,7 +2037,9 @@ class _LogoMark extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(Icons.bolt, color: Colors.white),
+      child: ClipOval(
+        child: Image.asset('assets/app_icon.png', fit: BoxFit.cover),
+      ),
     );
   }
 }
@@ -2092,6 +2179,26 @@ String? _countryCodeForNode(VpnNode? node) {
   }
   return countryCodeFromText(node.name, node.server) ??
       normalizeCountryCode(node.countryCode);
+}
+
+String? _viaCountryCodeForNode(VpnNode node) {
+  final parts = RegExp(r'\s+|/|[^\s/]+')
+      .allMatches(cleanNodeName(node.name))
+      .map((match) => match.group(0) ?? '')
+      .where((part) => part.trim().isNotEmpty && part != '/')
+      .toList(growable: false);
+
+  for (var index = 0; index < parts.length - 1; index++) {
+    if (_plainWord(parts[index]).toLowerCase() != 'via') {
+      continue;
+    }
+    final code = _countryCodeFromToken(parts[index + 1]);
+    if (code != null) {
+      return code;
+    }
+  }
+
+  return null;
 }
 
 List<Color> _paletteFor(String? code) {

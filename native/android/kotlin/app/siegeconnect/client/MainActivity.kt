@@ -1,4 +1,4 @@
-package app.pxxconnect.client
+package app.siegeconnect.client
 
 import android.content.Intent
 import android.net.VpnService
@@ -7,8 +7,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val vpnChannel = "app.pxxconnect/vpn"
-    private val mihomoChannel = "app.pxxconnect/mihomo"
+    private val vpnChannel = "app.siegeconnect/vpn"
+    private val mihomoChannel = "app.siegeconnect/mihomo"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

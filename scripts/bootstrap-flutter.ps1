@@ -41,10 +41,10 @@ foreach ($dir in @("android", "ios", "windows")) {
   }
 }
 
-$androidTarget = Join-Path $root "android\app\src\main\kotlin\app\pxxconnect\client"
+$androidTarget = Join-Path $root "android\app\src\main\kotlin\app\siegeconnect\client"
 New-Item -ItemType Directory -Force -Path $androidTarget | Out-Null
-Copy-Item -LiteralPath (Join-Path $root "native\android\kotlin\app\pxxconnect\client\MainActivity.kt") -Destination $androidTarget -Force
-Copy-Item -LiteralPath (Join-Path $root "native\android\kotlin\app\pxxconnect\client\PxxVpnService.kt") -Destination $androidTarget -Force
+Copy-Item -LiteralPath (Join-Path $root "native\android\kotlin\app\siegeconnect\client\MainActivity.kt") -Destination $androidTarget -Force
+Copy-Item -LiteralPath (Join-Path $root "native\android\kotlin\app\siegeconnect\client\PxxVpnService.kt") -Destination $androidTarget -Force
 
 $iosTarget = Join-Path $root "ios\Runner\VpnBridge.swift"
 if (Test-Path (Split-Path $iosTarget -Parent)) {
