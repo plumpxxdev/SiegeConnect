@@ -134,6 +134,15 @@ class MihomoCore {
     return false;
   }
 
+  Future<bool> isControllerAvailable() async {
+    try {
+      await _waitForController(timeout: const Duration(seconds: 3));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _startDesktop(
     String configPath,
     AppSettings settings,

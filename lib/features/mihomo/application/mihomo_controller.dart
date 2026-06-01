@@ -45,7 +45,7 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
     try {
       await core
           .start(configPath: configPath, settings: settings)
-          .timeout(const Duration(seconds: 28));
+          .timeout(const Duration(seconds: 90));
       if (!_isCurrentRun(runId)) {
         return;
       }
@@ -55,11 +55,21 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
             groupName: AppConstants.proxyGroupName,
             proxyName: node.name,
           )
-          .timeout(const Duration(seconds: 14), onTimeout: () => false);
+          .timeout(const Duration(seconds: 35), onTimeout: () => false);
       if (!proxySelected) {
-        throw StateError(
-          'Mihomo запустился, но группу PROXY не удалось переключить на выбранный сервер.',
-        );
+        final controllerAvailable = await core.isControllerAvailable();
+        if (controllerAvailable) {
+          await _ref.read(logRepositoryProvider).add(
+                level: 'warn',
+                source: 'mihomo',
+                message:
+                    'PROXY group was not switched; using the first proxy from the generated config.',
+              );
+        } else {
+          throw StateError(
+            'Mihomo запустился, но группу PROXY не удалось переключить на выбранный сервер.',
+          );
+        }
       }
       if (!_isCurrentRun(runId)) {
         return;

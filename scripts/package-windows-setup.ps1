@@ -40,7 +40,7 @@ using System.Windows.Forms;
 internal static class Program
 {
     internal const string AppName = "SiegeConnect";
-    internal const string AppVersion = "0.1.6";
+    internal const string AppVersion = "0.1.7";
     internal const string TaskName = "SiegeConnectMihomo";
 
     [STAThread]
@@ -491,6 +491,9 @@ internal static class InstallerActions
         progress(58, "Регистрация фонового TUN-компонента...");
         RegisterTunTask(installDir, runtimeDir);
 
+        progress(68, "Подготовка удаления...");
+        File.Copy(Application.ExecutablePath, Path.Combine(installDir, "SiegeConnect-Uninstall.exe"), true);
+
         progress(72, "Создание ярлыков...");
         DeleteShortcuts();
         if (options.CreateDesktopShortcut)
@@ -505,7 +508,6 @@ internal static class InstallerActions
         }
 
         progress(86, "Регистрация удаления...");
-        File.Copy(Application.ExecutablePath, Path.Combine(installDir, "SiegeConnect-Uninstall.exe"), true);
         RegisterUninstallEntry(installDir);
 
         progress(100, "Готово.");
@@ -551,21 +553,59 @@ internal static class InstallerActions
                 Encoding.UTF8);
         }
 
-        string launchScript = "& " + PsQuote(mihomo) + " -f " + PsQuote(config);
-        string launchEncoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(launchScript));
-        string launchArguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand " + launchEncoded;
+        string taskXml = Path.Combine(Path.GetTempPath(), "SiegeConnectTask-" + Guid.NewGuid().ToString("N") + ".xml");
+        try
+        {
+            File.WriteAllText(taskXml, BuildTaskXml(mihomo, installDir, config), Encoding.UTF8);
+            Run("schtasks.exe", "/Create /TN " + Quote(Program.TaskName) + " /XML " + Quote(taskXml) + " /F");
+        }
+        finally
+        {
+            DeleteFileIfExists(taskXml);
+        }
+    }
 
-        string script =
-            "$action = New-ScheduledTaskAction -Execute 'powershell.exe'" +
-            " -Argument " + PsQuote(launchArguments) +
-            " -WorkingDirectory " + PsQuote(installDir) + ";" +
-            "$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries " +
-            "-ExecutionTimeLimit (New-TimeSpan -Seconds 0) -MultipleInstances IgnoreNew;" +
-            "Register-ScheduledTask -TaskName " + PsQuote(Program.TaskName) +
-            " -Action $action -Settings $settings -RunLevel Highest -Force | Out-Null";
-
-        string encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
-        Run("powershell.exe", "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand " + encoded);
+    private static string BuildTaskXml(string mihomo, string installDir, string config)
+    {
+        return @"<?xml version=""1.0"" encoding=""UTF-8""?>
+<Task version=""1.4"" xmlns=""http://schemas.microsoft.com/windows/2004/02/mit/task"">
+  <RegistrationInfo>
+    <Author>SiegeConnect</Author>
+    <Description>Runs SiegeConnect Mihomo core with elevated privileges for TUN mode.</Description>
+  </RegistrationInfo>
+  <Principals>
+    <Principal id=""Author"">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>false</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <IdleSettings>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>true</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context=""Author"">
+    <Exec>
+      <Command>" + XmlEscape(mihomo) + @"</Command>
+      <Arguments>-d " + QuoteXmlArgument(installDir) + " -f " + QuoteXmlArgument(config) + @"</Arguments>
+      <WorkingDirectory>" + XmlEscape(installDir) + @"</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>";
     }
 
     internal static void UnregisterTunTask()
@@ -612,20 +652,50 @@ internal static class InstallerActions
 
     internal static void CreateShortcut(string shortcutPath, string targetPath, string workingDirectory, string arguments)
     {
+        if (!File.Exists(targetPath))
+        {
+            return;
+        }
+
+        string shortcutDir = Path.GetDirectoryName(shortcutPath);
+        if (!String.IsNullOrEmpty(shortcutDir))
+        {
+            Directory.CreateDirectory(shortcutDir);
+        }
+
         Type shellType = Type.GetTypeFromProgID("WScript.Shell");
         if (shellType == null)
         {
             return;
         }
 
-        object shell = Activator.CreateInstance(shellType);
-        object shortcut = shellType.InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { shortcutPath });
-        Type shortcutType = shortcut.GetType();
-        shortcutType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, shortcut, new object[] { targetPath });
-        shortcutType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, shortcut, new object[] { workingDirectory });
-        shortcutType.InvokeMember("Arguments", BindingFlags.SetProperty, null, shortcut, new object[] { arguments });
-        shortcutType.InvokeMember("IconLocation", BindingFlags.SetProperty, null, shortcut, new object[] { targetPath });
-        shortcutType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, null);
+        object shell = null;
+        object shortcut = null;
+        try
+        {
+            shell = Activator.CreateInstance(shellType);
+            shortcut = shellType.InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { shortcutPath });
+            Type shortcutType = shortcut.GetType();
+            shortcutType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, shortcut, new object[] { targetPath });
+            shortcutType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, shortcut, new object[] { workingDirectory });
+            shortcutType.InvokeMember("Arguments", BindingFlags.SetProperty, null, shortcut, new object[] { arguments });
+            shortcutType.InvokeMember("IconLocation", BindingFlags.SetProperty, null, shortcut, new object[] { targetPath });
+            shortcutType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, null);
+        }
+        catch
+        {
+        }
+        finally
+        {
+            if (shortcut != null && Marshal.IsComObject(shortcut))
+            {
+                Marshal.FinalReleaseComObject(shortcut);
+            }
+            if (shell != null && Marshal.IsComObject(shell))
+            {
+                Marshal.FinalReleaseComObject(shell);
+            }
+        }
     }
 
     internal static void DeleteShortcuts()
@@ -665,9 +735,7 @@ internal static class InstallerActions
 
     internal static void ScheduleDirectoryRemoval(string installDir)
     {
-        string script = "Start-Sleep -Seconds 1; Remove-Item -LiteralPath " + PsQuote(installDir) + " -Recurse -Force -ErrorAction SilentlyContinue";
-        string encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
-        Process.Start(new ProcessStartInfo("powershell.exe", "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand " + encoded)
+        Process.Start(new ProcessStartInfo("cmd.exe", "/c timeout /t 1 /nobreak >nul & rmdir /s /q " + Quote(installDir))
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -726,6 +794,20 @@ internal static class InstallerActions
     private static string Quote(string value)
     {
         return "\"" + value.Replace("\"", "\\\"") + "\"";
+    }
+
+    private static string QuoteXmlArgument(string value)
+    {
+        return "&quot;" + XmlEscape(value) + "&quot;";
+    }
+
+    private static string XmlEscape(string value)
+    {
+        return value
+            .Replace("&", "&amp;")
+            .Replace("\"", "&quot;")
+            .Replace("<", "&lt;")
+            .Replace(">", "&gt;");
     }
 
     private static string PsQuote(string value)
