@@ -22,7 +22,6 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "start" -> startVpn(call, result)
                     "stop" -> {
-                        AndroidMihomoProcess.stop()
                         startService(Intent(this, PxxVpnService::class.java).apply {
                             action = PxxVpnService.ACTION_STOP
                         })

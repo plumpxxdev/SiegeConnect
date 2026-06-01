@@ -141,15 +141,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _SettingsSection(
                 title: 'Запуск и сообщения',
                 children: [
-                  SwitchListTile(
-                    title: const Text('Автозапуск Windows'),
-                    subtitle: const Text(
-                        'Запускать SiegeConnect после входа в систему'),
-                    value: draft.launchAtStartup,
-                    onChanged: (enabled) => _mutate(
-                      (settings) => settings.launchAtStartup = enabled,
+                  if (!Platform.isAndroid)
+                    SwitchListTile(
+                      title: const Text('Автозапуск Windows'),
+                      subtitle: const Text(
+                          'Запускать SiegeConnect после входа в систему'),
+                      value: draft.launchAtStartup,
+                      onChanged: (enabled) => _mutate(
+                        (settings) => settings.launchAtStartup = enabled,
+                      ),
                     ),
-                  ),
                   SwitchListTile(
                     title: const Text('Сообщения'),
                     subtitle:
@@ -209,43 +210,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              _SettingsSection(
-                title: 'Сплит-туннелинг',
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
-                    child: DropdownButtonFormField<SplitTunnelMode>(
-                      initialValue: draft.splitTunnelMode,
-                      decoration: const InputDecoration(
-                        labelText: 'Приложения',
-                        prefixIcon: Icon(Icons.call_split),
+              if (!Platform.isAndroid) ...[
+                const SizedBox(height: 14),
+                _SettingsSection(
+                  title: 'Сплит-туннелинг',
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+                      child: DropdownButtonFormField<SplitTunnelMode>(
+                        initialValue: draft.splitTunnelMode,
+                        decoration: const InputDecoration(
+                          labelText: 'Приложения',
+                          prefixIcon: Icon(Icons.call_split),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: SplitTunnelMode.disabled,
+                            child: Text('Выключен'),
+                          ),
+                          DropdownMenuItem(
+                            value: SplitTunnelMode.onlySelectedApps,
+                            child: Text('Только выбранные'),
+                          ),
+                          DropdownMenuItem(
+                            value: SplitTunnelMode.excludeSelectedApps,
+                            child: Text('Все, кроме выбранных'),
+                          ),
+                        ],
+                        onChanged: (mode) {
+                          if (mode != null) {
+                            _mutate(
+                              (settings) => settings.splitTunnelMode = mode,
+                            );
+                          }
+                        },
                       ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: SplitTunnelMode.disabled,
-                          child: Text('Выключен'),
-                        ),
-                        DropdownMenuItem(
-                          value: SplitTunnelMode.onlySelectedApps,
-                          child: Text('Только выбранные'),
-                        ),
-                        DropdownMenuItem(
-                          value: SplitTunnelMode.excludeSelectedApps,
-                          child: Text('Все, кроме выбранных'),
-                        ),
-                      ],
-                      onChanged: (mode) {
-                        if (mode != null) {
-                          _mutate(
-                            (settings) => settings.splitTunnelMode = mode,
-                          );
-                        }
-                      },
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 18),
               Text(
                 'Логи',

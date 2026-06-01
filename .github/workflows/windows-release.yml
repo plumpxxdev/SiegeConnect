@@ -30,6 +30,18 @@ jobs:
         shell: pwsh
         run: powershell.exe -ExecutionPolicy Bypass -File scripts/package-windows-setup.ps1
 
+      - name: Create zip fallbacks
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path "build/windows/x64/runner/Release/*" `
+            -DestinationPath "dist/SiegeConnect-Windows-Portable.zip" `
+            -Force
+          Compress-Archive `
+            -Path "dist/SiegeConnect-Setup.exe" `
+            -DestinationPath "dist/SiegeConnect-Setup.zip" `
+            -Force
+
       - name: Publish release
         shell: pwsh
         env:
@@ -44,4 +56,6 @@ jobs:
           }
           gh release upload $env:GITHUB_REF_NAME `
             "dist/SiegeConnect-Setup.exe#SiegeConnect-Setup.exe" `
+            "dist/SiegeConnect-Setup.zip#SiegeConnect-Setup.zip" `
+            "dist/SiegeConnect-Windows-Portable.zip#SiegeConnect-Windows-Portable.zip" `
             --clobber

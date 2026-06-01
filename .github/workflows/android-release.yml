@@ -41,7 +41,9 @@ jobs:
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
             gh release create "$GITHUB_REF_NAME" --title "SiegeConnect $GITHUB_REF_NAME" --notes "SiegeConnect release build."
           cp "build/app/outputs/flutter-apk/app-release.apk" "SiegeConnect-Android.apk"
+          zip -9 "SiegeConnect-Android.zip" "SiegeConnect-Android.apk"
           gh release delete-asset "$GITHUB_REF_NAME" "app-release.apk" -y >/dev/null 2>&1 || true
           gh release upload "$GITHUB_REF_NAME" \
             "SiegeConnect-Android.apk" \
+            "SiegeConnect-Android.zip" \
             --clobber

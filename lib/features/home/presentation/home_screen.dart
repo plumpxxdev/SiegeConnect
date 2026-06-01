@@ -37,6 +37,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   DateTime? _lastRefreshAllAt;
   bool _refreshingAll = false;
   String? _lastTrayTooltip;
+  bool _exitingFromTray = false;
 
   @override
   void initState() {
@@ -69,6 +70,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return;
         }
         await ref.read(mihomoControllerProvider.notifier).disconnect();
+        return;
+      case 'exitRequested':
+        await _exitFromTray();
         return;
     }
   }
@@ -391,13 +395,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Добавить подписку'),
-        content: SizedBox(
-          width: 520,
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: 280,
+            maxWidth: 620,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: controller,
+                minLines: 1,
+                maxLines: 4,
                 decoration: const InputDecoration(
                   labelText: 'Ссылка подписки Remnawave',
                   prefixIcon: Icon(Icons.link),
@@ -493,7 +502,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     _lastTrayTooltip = tooltip;
     try {
-      await _trayChannel.invokeMethod<void>('setTooltip', tooltip);
+      await _trayChannel.invokeMethod<void>('setStatus', {
+        'tooltip': tooltip,
+        'connected': connection.isConnected,
+        'busy': connection.isBusy,
+        'hasSelected': selectedNode != null,
+      });
+    } on MissingPluginException {
+      // The tray channel exists only in the Windows runner.
+    }
+  }
+
+  Future<void> _exitFromTray() async {
+    if (_exitingFromTray) {
+      return;
+    }
+
+    _exitingFromTray = true;
+    try {
+      final connection = ref.read(mihomoControllerProvider);
+      if (connection.isConnected || connection.isBusy) {
+        await ref
+            .read(mihomoControllerProvider.notifier)
+            .disconnect()
+            .timeout(const Duration(seconds: 12));
+      }
+    } catch (_) {
+      // Exit should still be possible even if the core is already gone.
+    }
+
+    try {
+      await _trayChannel.invokeMethod<void>('exit');
     } on MissingPluginException {
       // The tray channel exists only in the Windows runner.
     }
@@ -698,50 +737,88 @@ class _SubscriptionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       child: Column(
         children: [
-          Row(
-            children: [
-              const _LogoMark(),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 430;
+              final title = Row(
+                children: [
+                  const _LogoMark(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            AppConstants.appName.toLowerCase(),
+                            maxLines: 1,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  height: 1,
+                                ),
+                          ),
+                        ),
+                        Text(
+                          profile?.title ?? 'подписка не добавлена',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: colors.onSurfaceVariant,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+              final actions = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _IconGlass(
+                    icon: Icons.add_link,
+                    tooltip: 'Добавить подписку',
+                    onPressed: onImport,
+                  ),
+                  const SizedBox(width: 8),
+                  _IconGlass(
+                    icon: Icons.refresh,
+                    tooltip: 'Обновить',
+                    onPressed: refreshing ? null : onRefresh,
+                  ),
+                  const SizedBox(width: 8),
+                  _IconGlass(
+                    icon: Icons.settings,
+                    tooltip: 'Настройки',
+                    onPressed: onSettings,
+                  ),
+                ],
+              );
+
+              if (compact) {
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      AppConstants.appName.toLowerCase(),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            height: 1,
-                          ),
-                    ),
-                    Text(
-                      profile?.title ?? 'подписка не добавлена',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                    ),
+                    title,
+                    const SizedBox(height: 12),
+                    Align(alignment: Alignment.centerRight, child: actions),
                   ],
-                ),
-              ),
-              _IconGlass(
-                icon: Icons.add_link,
-                tooltip: 'Добавить подписку',
-                onPressed: onImport,
-              ),
-              const SizedBox(width: 8),
-              _IconGlass(
-                icon: Icons.refresh,
-                tooltip: 'Обновить',
-                onPressed: refreshing ? null : onRefresh,
-              ),
-              const SizedBox(width: 8),
-              _IconGlass(
-                icon: Icons.settings,
-                tooltip: 'Настройки',
-                onPressed: onSettings,
-              ),
-            ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: title),
+                  const SizedBox(width: 12),
+                  actions,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 14),
           Row(

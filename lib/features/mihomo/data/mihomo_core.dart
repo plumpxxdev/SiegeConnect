@@ -31,12 +31,16 @@ class MihomoCore {
     required String configPath,
     required AppSettings settings,
   }) async {
+    final android = Platform.isAndroid;
     final args = <String, Object?>{
       'configPath': configPath,
       'killSwitch': settings.killSwitch,
-      'tunMode': Platform.isAndroid || settings.tunMode,
-      'splitTunnelMode': settings.splitTunnelMode.name,
-      'splitTunnelPackages': settings.splitTunnelPackages,
+      'tunMode': android || settings.tunMode,
+      'splitTunnelMode': android
+          ? SplitTunnelMode.disabled.name
+          : settings.splitTunnelMode.name,
+      'splitTunnelPackages':
+          android ? const <String>[] : settings.splitTunnelPackages,
     };
 
     try {

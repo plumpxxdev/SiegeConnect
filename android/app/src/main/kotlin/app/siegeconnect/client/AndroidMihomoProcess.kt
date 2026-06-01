@@ -144,8 +144,13 @@ object AndroidMihomoProcess {
         }
 
         upsert("file-descriptor", tunFd.toString())
+        upsert("stack", "gvisor")
+        upsert("inet4-address", "10.222.0.2/30")
+        upsert("inet6-address", "fdfe:dcba:9876::2/126")
+        upsert("mtu", "1500")
         upsert("auto-route", "false")
         upsert("auto-detect-interface", "false")
+        upsert("strict-route", "true")
         return lines.joinToString("\n")
     }
 

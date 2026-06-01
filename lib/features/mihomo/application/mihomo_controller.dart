@@ -36,6 +36,12 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
     final configPath = await _ref
         .read(subscriptionRepositoryProvider)
         .buildRuntimeConfigForNode(node, settings);
+    String? ipBeforeConnect;
+    if (Platform.isAndroid || settings.tunMode) {
+      ipBeforeConnect = await _readPublicIpSafely(
+        timeout: const Duration(seconds: 5),
+      );
+    }
 
     state = PxxConnectionState(
       phase: VpnConnectionPhase.connecting,
@@ -79,13 +85,19 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
         return;
       }
 
-      String? ip;
-      try {
-        ip = await _ref
-            .read(publicIpProvider.future)
-            .timeout(const Duration(seconds: 7));
-      } catch (_) {
-        ip = null;
+      if (Platform.isAndroid) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
+      final ip = await _readPublicIpSafely(
+        timeout: Duration(seconds: Platform.isAndroid ? 10 : 7),
+      );
+      if (Platform.isAndroid &&
+          ipBeforeConnect != null &&
+          ip != null &&
+          ip == ipBeforeConnect) {
+        throw StateError(
+          'Android TUN запустился, но внешний IP не изменился. Проверь VPN-разрешение и попробуй другой сервер.',
+        );
       }
       if (!_isCurrentRun(runId)) {
         return;
@@ -162,4 +174,16 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
   }
 
   bool _isCurrentRun(int runId) => runId == _connectionRunId;
+
+  Future<String?> _readPublicIpSafely({required Duration timeout}) async {
+    try {
+      final response = await _ref
+          .read(dioProvider)
+          .get<String>('https://api.ipify.org')
+          .timeout(timeout);
+      return response.data?.trim();
+    } catch (_) {
+      return null;
+    }
+  }
 }

@@ -9,9 +9,14 @@ class PxxVpnService : VpnService() {
     private var tunnel: ParcelFileDescriptor? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_START -> startTunnel(intent)
-            ACTION_STOP -> stopTunnel()
+        try {
+            when (intent?.action) {
+                ACTION_START -> startTunnel(intent)
+                ACTION_STOP -> stopTunnel()
+            }
+        } catch (error: Exception) {
+            Log.e(TAG, "VPN service command failed", error)
+            stopTunnel(closeService = true)
         }
         return START_STICKY
     }
@@ -19,17 +24,21 @@ class PxxVpnService : VpnService() {
     private fun startTunnel(intent: Intent) {
         stopTunnel(closeService = false)
 
-        val packages = intent.getStringArrayListExtra("splitTunnelPackages") ?: arrayListOf()
-        val splitMode = intent.getStringExtra("splitTunnelMode") ?: "disabled"
+        val packages = arrayListOf<String>()
+        val splitMode = "disabled"
         val configPath = intent.getStringExtra("configPath") ?: return
         val tunMode = intent.getBooleanExtra("tunMode", true)
 
         if (tunMode) {
             val builder = Builder()
                 .setSession("SiegeConnect")
+                .setMtu(1500)
                 .addAddress("10.222.0.2", 30)
+                .addAddress("fdfe:dcba:9876::2", 126)
                 .addDnsServer("1.1.1.1")
+                .addDnsServer("8.8.8.8")
                 .addRoute("0.0.0.0", 0)
+                .addRoute("::", 0)
 
             if (splitMode == "onlySelectedApps") {
                 packages.forEach { packageName ->
@@ -44,6 +53,9 @@ class PxxVpnService : VpnService() {
             }
 
             tunnel = builder.establish()
+            if (tunnel == null) {
+                throw IllegalStateException("Android VPN permission was not granted")
+            }
         }
 
         try {
@@ -60,8 +72,16 @@ class PxxVpnService : VpnService() {
     }
 
     private fun stopTunnel(closeService: Boolean = true) {
-        AndroidMihomoProcess.stop()
-        tunnel?.close()
+        try {
+            AndroidMihomoProcess.stop()
+        } catch (error: Exception) {
+            Log.w(TAG, "Failed to stop Mihomo cleanly", error)
+        }
+        try {
+            tunnel?.close()
+        } catch (error: Exception) {
+            Log.w(TAG, "Failed to close Android VPN fd", error)
+        }
         tunnel = null
         if (closeService) {
             stopSelf()

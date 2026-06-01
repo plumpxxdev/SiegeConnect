@@ -15,9 +15,14 @@ class SettingsController extends AsyncNotifier<AppSettings> {
     final isar = await ref.watch(isarProvider.future);
     final existing = await isar.appSettings.get(1);
     if (existing != null) {
-      if (Platform.isAndroid && !existing.tunMode) {
+      if (Platform.isAndroid &&
+          (!existing.tunMode ||
+              existing.splitTunnelMode != SplitTunnelMode.disabled ||
+              existing.splitTunnelPackages.isNotEmpty)) {
         existing
           ..tunMode = true
+          ..splitTunnelMode = SplitTunnelMode.disabled
+          ..splitTunnelPackages = []
           ..updatedAt = DateTime.now();
         await isar.writeTxn(() => isar.appSettings.put(existing));
       }
@@ -26,7 +31,10 @@ class SettingsController extends AsyncNotifier<AppSettings> {
 
     final defaults = AppSettings();
     if (Platform.isAndroid) {
-      defaults.tunMode = true;
+      defaults
+        ..tunMode = true
+        ..splitTunnelMode = SplitTunnelMode.disabled
+        ..splitTunnelPackages = [];
     }
     await isar.writeTxn(() => isar.appSettings.put(defaults));
     return defaults;
@@ -38,7 +46,10 @@ class SettingsController extends AsyncNotifier<AppSettings> {
     final current = state.value ?? AppSettings();
     final next = mutate(current)..updatedAt = DateTime.now();
     if (Platform.isAndroid) {
-      next.tunMode = true;
+      next
+        ..tunMode = true
+        ..splitTunnelMode = SplitTunnelMode.disabled
+        ..splitTunnelPackages = [];
     }
 
     await isar.writeTxn(() => isar.appSettings.put(next));

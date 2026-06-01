@@ -32,7 +32,14 @@ class FlutterWindow : public Win32Window {
   void RemoveTrayIcon();
   void ShowFromTray();
   void ShowTrayMenu();
+  void RequestExitFromTray();
   static std::wstring Utf8ToWide(const std::string& value);
+  static bool GetBoolValue(const flutter::EncodableMap& map,
+                           const char* key,
+                           bool fallback);
+  static std::wstring GetStringValue(const flutter::EncodableMap& map,
+                                     const char* key,
+                                     const std::wstring& fallback);
 
   static constexpr UINT kTrayMessage = WM_APP + 1;
   static constexpr UINT kTrayIconId = 1;
@@ -50,6 +57,9 @@ class FlutterWindow : public Win32Window {
       tray_channel_;
   NOTIFYICONDATAW tray_icon_data_ = {};
   bool tray_icon_added_ = false;
+  bool tray_connected_ = false;
+  bool tray_busy_ = false;
+  bool tray_has_selected_ = false;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

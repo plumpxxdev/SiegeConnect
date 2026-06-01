@@ -45,7 +45,7 @@ class MihomoYamlMergeService {
 
     config['mode'] = 'rule';
     config['allow-lan'] = false;
-    config['ipv6'] = false;
+    config['ipv6'] = enableTun;
     config['log-level'] = 'info';
     config['mixed-port'] = AppConstants.mixedProxyPort;
     config['external-controller'] = AppConstants.controllerAddress;

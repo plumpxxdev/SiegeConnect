@@ -54,6 +54,21 @@ bool FlutterWindow::OnCreate() {
           return;
         }
 
+        if (call.method_name() == "setStatus") {
+          const auto* arguments = call.arguments();
+          if (arguments && std::holds_alternative<flutter::EncodableMap>(
+                               *arguments)) {
+            const auto& map = std::get<flutter::EncodableMap>(*arguments);
+            tray_connected_ = GetBoolValue(map, "connected", false);
+            tray_busy_ = GetBoolValue(map, "busy", false);
+            tray_has_selected_ = GetBoolValue(map, "hasSelected", false);
+            AddOrUpdateTrayIcon(
+                GetStringValue(map, "tooltip", L"SiegeConnect"));
+          }
+          result->Success();
+          return;
+        }
+
         if (call.method_name() == "showWindow") {
           ShowFromTray();
           result->Success();
@@ -188,9 +203,15 @@ void FlutterWindow::ShowTrayMenu() {
   AppendMenuW(menu, MF_STRING, kTrayMenuOpen,
               L"\x041e\x0442\x043a\x0440\x044b\x0442\x044c");
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-  AppendMenuW(menu, MF_STRING, kTrayMenuConnectSelected,
+  const UINT connect_flags =
+      MF_STRING |
+      ((!tray_connected_ && !tray_busy_ && tray_has_selected_) ? 0
+                                                               : MF_GRAYED);
+  const UINT disconnect_flags =
+      MF_STRING | ((tray_connected_ || tray_busy_) ? 0 : MF_GRAYED);
+  AppendMenuW(menu, connect_flags, kTrayMenuConnectSelected,
               L"\x041f\x043e\x0434\x043a\x043b\x044e\x0447\x0438\x0442\x044c \x043a \x0432\x044b\x0431\x0440\x0430\x043d\x043d\x043e\x043c\x0443");
-  AppendMenuW(menu, MF_STRING, kTrayMenuDisconnect,
+  AppendMenuW(menu, disconnect_flags, kTrayMenuDisconnect,
               L"\x041e\x0442\x043a\x043b\x044e\x0447\x0438\x0442\x044c VPN");
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
   AppendMenuW(menu, MF_STRING, kTrayMenuExit,
@@ -217,9 +238,19 @@ void FlutterWindow::ShowTrayMenu() {
           std::make_unique<flutter::EncodableValue>());
     }
   } else if (command == kTrayMenuExit) {
-    RemoveTrayIcon();
-    DestroyWindow(GetHandle());
+    RequestExitFromTray();
   }
+}
+
+void FlutterWindow::RequestExitFromTray() {
+  if (tray_channel_) {
+    tray_channel_->InvokeMethod("exitRequested",
+                                std::make_unique<flutter::EncodableValue>());
+    return;
+  }
+
+  RemoveTrayIcon();
+  DestroyWindow(GetHandle());
 }
 
 std::wstring FlutterWindow::Utf8ToWide(const std::string& value) {
@@ -239,4 +270,24 @@ std::wstring FlutterWindow::Utf8ToWide(const std::string& value) {
                       static_cast<int>(value.size()), result.data(),
                       wide_size);
   return result;
+}
+
+bool FlutterWindow::GetBoolValue(const flutter::EncodableMap& map,
+                                 const char* key,
+                                 bool fallback) {
+  const auto it = map.find(flutter::EncodableValue(std::string(key)));
+  if (it == map.end() || !std::holds_alternative<bool>(it->second)) {
+    return fallback;
+  }
+  return std::get<bool>(it->second);
+}
+
+std::wstring FlutterWindow::GetStringValue(const flutter::EncodableMap& map,
+                                           const char* key,
+                                           const std::wstring& fallback) {
+  const auto it = map.find(flutter::EncodableValue(std::string(key)));
+  if (it == map.end() || !std::holds_alternative<std::string>(it->second)) {
+    return fallback;
+  }
+  return Utf8ToWide(std::get<std::string>(it->second));
 }
