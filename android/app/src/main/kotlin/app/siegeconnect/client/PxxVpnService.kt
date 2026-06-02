@@ -34,11 +34,17 @@ class PxxVpnService : VpnService() {
                 .setSession("SiegeConnect")
                 .setMtu(1500)
                 .addAddress("10.222.0.2", 30)
-                .addAddress("fdfe:dcba:9876::2", 126)
                 .addDnsServer("1.1.1.1")
                 .addDnsServer("8.8.8.8")
                 .addRoute("0.0.0.0", 0)
-                .addRoute("::", 0)
+
+            try {
+                builder
+                    .addAddress("fdfe:dcba:9876::2", 126)
+                    .addRoute("::", 0)
+            } catch (error: Exception) {
+                Log.w(TAG, "IPv6 VPN route is not available on this device", error)
+            }
 
             if (splitMode == "onlySelectedApps") {
                 packages.forEach { packageName ->

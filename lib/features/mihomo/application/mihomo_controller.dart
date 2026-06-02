@@ -37,7 +37,7 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
         .read(subscriptionRepositoryProvider)
         .buildRuntimeConfigForNode(node, settings);
     String? ipBeforeConnect;
-    if (Platform.isAndroid || settings.tunMode) {
+    if (!Platform.isAndroid && settings.tunMode) {
       ipBeforeConnect = await _readPublicIpSafely(
         timeout: const Duration(seconds: 5),
       );
@@ -88,15 +88,17 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
       if (Platform.isAndroid) {
         await Future<void>.delayed(const Duration(seconds: 2));
       }
-      final ip = await _readPublicIpSafely(
-        timeout: Duration(seconds: Platform.isAndroid ? 10 : 7),
-      );
-      if (Platform.isAndroid &&
+      final ip = Platform.isAndroid
+          ? null
+          : await _readPublicIpSafely(
+              timeout: const Duration(seconds: 7),
+            );
+      if (!Platform.isAndroid &&
           ipBeforeConnect != null &&
           ip != null &&
           ip == ipBeforeConnect) {
         throw StateError(
-          'Android TUN запустился, но внешний IP не изменился. Проверь VPN-разрешение и попробуй другой сервер.',
+          'TUN запустился, но внешний IP не изменился. Проверь разрешения и попробуй другой сервер.',
         );
       }
       if (!_isCurrentRun(runId)) {
