@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../shared/user_facing_error.dart';
 import '../../logs/application/log_repository.dart';
 import '../../settings/application/settings_controller.dart';
 import '../../subscription/data/subscription_repository.dart';
@@ -131,7 +132,7 @@ class MihomoController extends StateNotifier<PxxConnectionState> {
         phase: VpnConnectionPhase.error,
         currentNodeName: node.name,
         currentProtocol: node.type,
-        message: error.toString(),
+        message: userFacingErrorMessage(error),
       );
       rethrow;
     }

@@ -1,7 +1,7 @@
 name: siegeconnect
 description: SiegeConnect cross-platform VPN client for Remnawave subscriptions and Mihomo.
 publish_to: "none"
-version: 0.1.6+9
+version: 0.1.7+10
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

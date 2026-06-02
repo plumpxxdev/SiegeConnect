@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/countries.dart';
 import '../../../shared/privacy.dart';
+import '../../../shared/user_facing_error.dart';
 import '../../../shared/widgets/async_value_view.dart';
 import '../../mihomo/application/mihomo_controller.dart';
 import '../../mihomo/domain/connection_state.dart';
@@ -190,7 +191,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     } catch (error) {
       if (mounted) {
-        _showSnack(error.toString());
+        _showSnack(error);
       }
     } finally {
       if (mounted) {
@@ -209,7 +210,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(mihomoControllerProvider.notifier).pingAll(nodes);
     } catch (error) {
       if (mounted) {
-        _showSnack(error.toString());
+        _showSnack(error);
       }
     } finally {
       if (mounted) {
@@ -233,7 +234,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(subscriptionRepositoryProvider).refreshAll();
     } catch (error) {
       if (mounted) {
-        _showSnack(error.toString());
+        _showSnack(error);
       }
     } finally {
       if (mounted) {
@@ -257,7 +258,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(subscriptionRepositoryProvider).refreshProfile(profile.id);
     } catch (error) {
       if (mounted) {
-        _showSnack(error.toString());
+        _showSnack(error);
       }
     } finally {
       if (mounted) {
@@ -289,7 +290,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(mihomoControllerProvider.notifier).delay(node);
     } catch (error) {
       if (mounted) {
-        _showSnack(error.toString());
+        _showSnack(error);
       }
     } finally {
       if (mounted) {
@@ -309,7 +310,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(mihomoControllerProvider.notifier).connect(node);
     } catch (error) {
       if (context.mounted) {
-        _showSnack(error.toString());
+        _showSnack(error);
       }
     }
   }
@@ -384,7 +385,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     } catch (error) {
       if (mounted) {
-        _showSnack(error.toString());
+        _showSnack(error);
       }
     }
   }
@@ -459,19 +460,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await action();
     } catch (error) {
       if (context.mounted) {
-        _showSnack(error.toString());
+        _showSnack(error);
       }
     }
   }
 
-  void _showSnack(String message) {
+  void _showSnack(Object error) {
     final settings = ref.read(settingsControllerProvider).valueOrNull;
     if (settings?.showConnectionMessages == false) {
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(redactNetworkText(message))),
+      SnackBar(content: Text(userFacingErrorMessage(error))),
     );
   }
 

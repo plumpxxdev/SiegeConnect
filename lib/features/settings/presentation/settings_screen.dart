@@ -9,6 +9,7 @@ import '../../subscription/data/subscription_repository.dart';
 import '../../settings/application/settings_controller.dart';
 import '../../settings/domain/app_settings.dart';
 import '../../../shared/privacy.dart';
+import '../../../shared/user_facing_error.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -48,7 +49,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       body: settings.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text(error.toString())),
+        error: (error, _) => Center(child: Text(userFacingErrorMessage(error))),
         data: (value) {
           if (_draft == null || (!_dirty && _loadedAt != value.updatedAt)) {
             _draft = value.copy();
@@ -260,7 +261,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 8),
               logs.when(
                 loading: () => const LinearProgressIndicator(),
-                error: (error, _) => Text(error.toString()),
+                error: (error, _) => Text(userFacingErrorMessage(error)),
                 data: (items) => SelectableText(
                   items.isEmpty
                       ? 'Пока пусто'
@@ -349,7 +350,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(redactNetworkText(error.toString()))),
+          SnackBar(content: Text(userFacingErrorMessage(error))),
         );
       }
     } finally {

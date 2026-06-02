@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../user_facing_error.dart';
+
 class AsyncValueView<T> extends StatelessWidget {
   const AsyncValueView({
     required this.value,
@@ -20,7 +22,7 @@ class AsyncValueView<T> extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
-            error.toString(),
+            userFacingErrorMessage(error),
             textAlign: TextAlign.center,
           ),
         ),
