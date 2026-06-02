@@ -350,7 +350,17 @@ internal sealed class InstallerWizard : Form
             subtitle.Text = "SiegeConnect установлен на компьютер.";
             back.Enabled = false;
             cancel.Text = "Закрыть";
-            AddParagraph("Теперь можно запускать SiegeConnect из меню Пуск или с рабочего стола. Для TUN без UAC фоновый компонент уже зарегистрирован.");
+            if (String.IsNullOrEmpty(InstallerActions.LastWarning))
+            {
+                AddParagraph("Теперь можно запускать SiegeConnect из меню Пуск или с рабочего стола. Для TUN без UAC фоновый компонент уже зарегистрирован.");
+            }
+            else
+            {
+                AddParagraph(
+                    "SiegeConnect установлен, но Windows не дала зарегистрировать фоновый TUN-компонент.\r\n\r\n" +
+                    "Попробуйте запустить установщик от имени администратора еще раз. Подробности сохранены в:\r\n" +
+                    Path.Combine(InstallerPaths.RuntimeDir, "setup-warning.txt"));
+            }
         }
     }
 
@@ -462,9 +472,11 @@ internal sealed class InstallerOptions
 internal static class InstallerActions
 {
     internal delegate void Progress(int value, string text);
+    internal static string LastWarning = "";
 
     internal static void Install(InstallerOptions options, Progress progress)
     {
+        LastWarning = "";
         string installDir = InstallerPaths.InstallDir;
         string runtimeDir = InstallerPaths.RuntimeDir;
 
@@ -489,7 +501,18 @@ internal static class InstallerActions
         ExtractPayload(installDir);
 
         progress(58, "Регистрация фонового TUN-компонента...");
-        RegisterTunTask(installDir, runtimeDir);
+        try
+        {
+            RegisterTunTask(installDir, runtimeDir);
+        }
+        catch (Exception error)
+        {
+            LastWarning =
+                "Фоновый TUN-компонент не удалось зарегистрировать автоматически. " +
+                "Приложение установлено, но TUN без UAC может попросить повторную установку или запуск от администратора.\r\n\r\n" +
+                error.Message;
+            File.WriteAllText(Path.Combine(runtimeDir, "setup-warning.txt"), LastWarning, Encoding.UTF8);
+        }
 
         progress(68, "Подготовка удаления...");
         File.Copy(Application.ExecutablePath, Path.Combine(installDir, "SiegeConnect-Uninstall.exe"), true);
@@ -545,6 +568,10 @@ internal static class InstallerActions
     {
         string mihomo = Path.Combine(installDir, "mihomo.exe");
         string config = Path.Combine(runtimeDir, "current.yaml");
+        if (!File.Exists(mihomo))
+        {
+            throw new InvalidOperationException("mihomo.exe not found: " + mihomo);
+        }
         if (!File.Exists(config))
         {
             File.WriteAllText(
@@ -553,15 +580,57 @@ internal static class InstallerActions
                 Encoding.UTF8);
         }
 
+        Exception powershellError = null;
+        try
+        {
+            RegisterTunTaskWithPowerShell(mihomo, installDir, config);
+            return;
+        }
+        catch (Exception error)
+        {
+            powershellError = error;
+        }
+
         string taskXml = Path.Combine(Path.GetTempPath(), "SiegeConnectTask-" + Guid.NewGuid().ToString("N") + ".xml");
         try
         {
             File.WriteAllText(taskXml, BuildTaskXml(mihomo, installDir, config), Encoding.UTF8);
             Run("schtasks.exe", "/Create /TN " + Quote(Program.TaskName) + " /XML " + Quote(taskXml) + " /F");
         }
+        catch (Exception xmlError)
+        {
+            throw new InvalidOperationException(
+                "Unable to register SiegeConnect TUN task.\r\n\r\n" +
+                "PowerShell method:\r\n" + powershellError.Message + "\r\n\r\n" +
+                "schtasks XML method:\r\n" + xmlError.Message,
+                xmlError);
+        }
         finally
         {
             DeleteFileIfExists(taskXml);
+        }
+    }
+
+    private static void RegisterTunTaskWithPowerShell(string mihomo, string installDir, string config)
+    {
+        string arguments = "-d \"" + installDir + "\" -f \"" + config + "\"";
+        string script = @"
+$ErrorActionPreference = 'Stop'
+$taskName = " + PsQuote(Program.TaskName) + @"
+$action = New-ScheduledTaskAction -Execute " + PsQuote(mihomo) + @" -Argument " + PsQuote(arguments) + @" -WorkingDirectory " + PsQuote(installDir) + @"
+$principal = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Highest
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero)
+Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Settings $settings -Force | Out-Null
+";
+        string scriptPath = Path.Combine(Path.GetTempPath(), "SiegeConnectTask-" + Guid.NewGuid().ToString("N") + ".ps1");
+        try
+        {
+            File.WriteAllText(scriptPath, script, Encoding.UTF8);
+            Run("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -File " + Quote(scriptPath));
+        }
+        finally
+        {
+            DeleteFileIfExists(scriptPath);
         }
     }
 
@@ -761,16 +830,16 @@ internal static class InstallerActions
 
     private static void Run(string fileName, string arguments)
     {
-        Process process = Process.Start(new ProcessStartInfo(fileName, arguments)
+        CommandResult result = RunProcess(fileName, arguments);
+        if (result.ExitCode != 0)
         {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WindowStyle = ProcessWindowStyle.Hidden
-        });
-        process.WaitForExit();
-        if (process.ExitCode != 0)
-        {
-            throw new InvalidOperationException(fileName + " failed with exit code " + process.ExitCode);
+            string details = (result.Stdout + "\r\n" + result.Stderr).Trim();
+            if (String.IsNullOrEmpty(details))
+            {
+                details = "(no output)";
+            }
+            throw new InvalidOperationException(
+                fileName + " failed with exit code " + result.ExitCode + "\r\n" + details);
         }
     }
 
@@ -778,16 +847,40 @@ internal static class InstallerActions
     {
         try
         {
-            Process process = Process.Start(new ProcessStartInfo(fileName, arguments)
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden
-            });
-            process.WaitForExit();
+            RunProcess(fileName, arguments);
         }
         catch
         {
+        }
+    }
+
+    private static CommandResult RunProcess(string fileName, string arguments)
+    {
+        Process process = Process.Start(new ProcessStartInfo(fileName, arguments)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        });
+        string stdout = process.StandardOutput.ReadToEnd();
+        string stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        return new CommandResult(process.ExitCode, stdout, stderr);
+    }
+
+    private sealed class CommandResult
+    {
+        internal readonly int ExitCode;
+        internal readonly string Stdout;
+        internal readonly string Stderr;
+
+        internal CommandResult(int exitCode, string stdout, string stderr)
+        {
+            ExitCode = exitCode;
+            Stdout = stdout ?? "";
+            Stderr = stderr ?? "";
         }
     }
 

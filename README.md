@@ -1,6 +1,6 @@
 # SiegeConnect
 
-SiegeConnect is a proprietary cross-platform VPN client shell for Remnawave subscriptions. The app is designed around Flutter, Riverpod, Isar, Dio and Mihomo (Clash.Meta).
+SiegeConnect is an MIT-licensed cross-platform VPN client shell for Remnawave subscriptions. The app is designed around Flutter, Riverpod, Isar, Dio and Mihomo (Clash.Meta).
 
 ## Stack
 
@@ -46,3 +46,7 @@ powershell.exe -ExecutionPolicy Bypass -File .\scripts\install-mihomo.ps1
 ```
 
 TUN mode on Windows must be started with administrator rights.
+
+## License
+
+SiegeConnect source code is released under the MIT License. See [LICENSE](LICENSE).
