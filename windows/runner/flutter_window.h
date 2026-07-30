@@ -9,6 +9,7 @@
 #include <shellapi.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "win32_window.h"
@@ -17,7 +18,9 @@
 class FlutterWindow : public Win32Window {
  public:
   // Creates a new FlutterWindow hosting a Flutter view running |project|.
-  explicit FlutterWindow(const flutter::DartProject& project);
+  explicit FlutterWindow(
+      const flutter::DartProject& project,
+      std::optional<std::string> initial_deep_link = std::nullopt);
   virtual ~FlutterWindow();
 
  protected:
@@ -33,7 +36,10 @@ class FlutterWindow : public Win32Window {
   void ShowFromTray();
   void ShowTrayMenu();
   void RequestExitFromTray();
+  void NotifyDeepLink(const std::string& url);
+  void RegisterUrlSchemes();
   static std::wstring Utf8ToWide(const std::string& value);
+  static std::string WideToUtf8(const std::wstring& value);
   static bool GetBoolValue(const flutter::EncodableMap& map,
                            const char* key,
                            bool fallback);
@@ -47,6 +53,7 @@ class FlutterWindow : public Win32Window {
   static constexpr UINT kTrayMenuExit = 1002;
   static constexpr UINT kTrayMenuConnectSelected = 1003;
   static constexpr UINT kTrayMenuDisconnect = 1004;
+  static constexpr ULONG_PTR kDeepLinkCopyData = 0x5343444c;
 
   // The project to run.
   flutter::DartProject project_;
@@ -55,6 +62,9 @@ class FlutterWindow : public Win32Window {
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       tray_channel_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      deep_link_channel_;
+  std::optional<std::string> initial_deep_link_;
   NOTIFYICONDATAW tray_icon_data_ = {};
   bool tray_icon_added_ = false;
   bool tray_connected_ = false;

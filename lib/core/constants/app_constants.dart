@@ -7,6 +7,7 @@ class AppConstants {
   static const mihomoChannel = 'app.siegeconnect/mihomo';
   static const vpnChannel = 'app.siegeconnect/vpn';
   static const trayChannel = 'app.siegeconnect/tray';
+  static const deepLinkChannel = 'app.siegeconnect/deeplink';
   static const proxyGroupName = 'PROXY';
   static const mixedProxyPort = 7890;
   static const controllerAddress = '127.0.0.1:9090';

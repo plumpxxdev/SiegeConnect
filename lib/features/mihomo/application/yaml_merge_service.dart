@@ -50,6 +50,7 @@ class MihomoYamlMergeService {
     config['mixed-port'] = AppConstants.mixedProxyPort;
     config['external-controller'] = AppConstants.controllerAddress;
     config['secret'] = '';
+    config['dns'] = _buildDnsConfig(enableTun: enableTun);
 
     if (enableTun) {
       config['tun'] = <String, Object?>{
@@ -72,6 +73,45 @@ class MihomoYamlMergeService {
     ];
 
     return YamlWriter().write(config);
+  }
+
+  Map<String, Object?> _buildDnsConfig({required bool enableTun}) {
+    return <String, Object?>{
+      'enable': true,
+      // Keep the DNS listener away from port 53. TUN dns-hijack still captures
+      // system DNS traffic, while proxy mode avoids conflicts with local DNS.
+      'listen': '127.0.0.1:1053',
+      'ipv6': enableTun,
+      'enhanced-mode': enableTun ? 'fake-ip' : 'redir-host',
+      if (enableTun) 'fake-ip-range': '198.18.0.1/16',
+      if (enableTun)
+        'fake-ip-filter': <String>[
+          '*.lan',
+          '*.local',
+          'localhost',
+          '*.localhost',
+          '*.msftconnecttest.com',
+          '*.msftncsi.com',
+          'time.windows.com',
+        ],
+      'default-nameserver': <String>[
+        '1.1.1.1',
+        '8.8.8.8',
+        '9.9.9.9',
+        '77.88.8.8',
+      ],
+      'nameserver': <String>[
+        'https://cloudflare-dns.com/dns-query',
+        'https://dns.google/dns-query',
+        'https://dns.quad9.net/dns-query',
+        'https://dns.alidns.com/dns-query',
+      ],
+      'proxy-server-nameserver': <String>[
+        'https://cloudflare-dns.com/dns-query',
+        'https://dns.google/dns-query',
+        'https://dns.quad9.net/dns-query',
+      ],
+    };
   }
 
   List<Map<String, Object?>> extractProxyNodes(String yaml) {

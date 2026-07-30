@@ -30,6 +30,10 @@ rules:
     expect(merged, contains('MATCH,PROXY'));
     expect(merged, contains('mixed-port: 7890'));
     expect(merged, contains('strict-route'));
+    expect(merged, contains('dns:'));
+    expect(merged, contains('enhanced-mode: "fake-ip"'));
+    expect(merged, contains('listen: "127.0.0.1:1053"'));
+    expect(merged, contains('proxy-server-nameserver:'));
   });
 
   test('proxy mode removes tun block', () {
@@ -52,6 +56,7 @@ rules:
 
     expect(merged, isNot(contains('tun:')));
     expect(merged, contains('mixed-port: 7890'));
+    expect(merged, contains('enhanced-mode: "redir-host"'));
   });
 
   test('extracts proxy nodes from subscription yaml', () {

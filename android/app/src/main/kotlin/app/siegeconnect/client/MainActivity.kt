@@ -11,8 +11,10 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val vpnChannel = "app.siegeconnect/vpn"
     private val mihomoChannel = "app.siegeconnect/mihomo"
+    private val deepLinkChannelName = "app.siegeconnect/deeplink"
     private var pendingVpnStartIntent: Intent? = null
     private var pendingVpnResult: MethodChannel.Result? = null
+    private var deepLinkChannel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -39,6 +41,23 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        deepLinkChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, deepLinkChannelName)
+        deepLinkChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getInitialLink" -> result.success(intent?.dataString)
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val url = intent.dataString
+        if (!url.isNullOrBlank()) {
+            deepLinkChannel?.invokeMethod("onLink", url)
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

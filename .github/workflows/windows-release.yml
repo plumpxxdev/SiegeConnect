@@ -51,7 +51,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             gh release create $env:GITHUB_REF_NAME `
               --title "SiegeConnect $env:GITHUB_REF_NAME" `
-              --notes "Windows setup build for SiegeConnect." `
+              --notes "SiegeConnect release build with Android APK, Windows setup, TUN fixes, internal DNS and deep link import support." `
               --latest
           }
           gh release upload $env:GITHUB_REF_NAME `

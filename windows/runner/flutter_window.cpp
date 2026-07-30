@@ -6,13 +6,16 @@
 #include <windows.h>
 
 #include <optional>
+#include <utility>
 #include <variant>
 
 #include "flutter/generated_plugin_registrant.h"
 #include "resource.h"
 
-FlutterWindow::FlutterWindow(const flutter::DartProject& project)
-    : project_(project) {}
+FlutterWindow::FlutterWindow(
+    const flutter::DartProject& project,
+    std::optional<std::string> initial_deep_link)
+    : project_(project), initial_deep_link_(std::move(initial_deep_link)) {}
 
 FlutterWindow::~FlutterWindow() {}
 
@@ -86,6 +89,29 @@ bool FlutterWindow::OnCreate() {
 
         result->NotImplemented();
       });
+  deep_link_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(),
+          "app.siegeconnect/deeplink",
+          &flutter::StandardMethodCodec::GetInstance());
+  deep_link_channel_->SetMethodCallHandler(
+      [this](
+          const flutter::MethodCall<flutter::EncodableValue>& call,
+          std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+              result) {
+        if (call.method_name() == "getInitialLink") {
+          if (initial_deep_link_) {
+            result->Success(flutter::EncodableValue(*initial_deep_link_));
+            initial_deep_link_.reset();
+          } else {
+            result->Success();
+          }
+          return;
+        }
+
+        result->NotImplemented();
+      });
+  RegisterUrlSchemes();
   AddOrUpdateTrayIcon(L"SiegeConnect");
 
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
@@ -116,6 +142,21 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (message == WM_COPYDATA) {
+    const auto* copy_data =
+        reinterpret_cast<const COPYDATASTRUCT*>(lparam);
+    if (copy_data && copy_data->dwData == kDeepLinkCopyData &&
+        copy_data->lpData && copy_data->cbData >= sizeof(wchar_t)) {
+      size_t character_count = copy_data->cbData / sizeof(wchar_t);
+      const auto* raw = static_cast<const wchar_t*>(copy_data->lpData);
+      if (character_count > 0 && raw[character_count - 1] == L'\0') {
+        character_count--;
+      }
+      NotifyDeepLink(WideToUtf8(std::wstring(raw, character_count)));
+      return TRUE;
+    }
+  }
+
   if (message == WM_CLOSE) {
     ShowWindow(hwnd, SW_HIDE);
     return 0;
@@ -253,6 +294,59 @@ void FlutterWindow::RequestExitFromTray() {
   DestroyWindow(GetHandle());
 }
 
+void FlutterWindow::NotifyDeepLink(const std::string& url) {
+  if (url.empty()) {
+    return;
+  }
+
+  ShowFromTray();
+  if (deep_link_channel_) {
+    deep_link_channel_->InvokeMethod(
+        "onLink", std::make_unique<flutter::EncodableValue>(url));
+    return;
+  }
+
+  initial_deep_link_ = url;
+}
+
+void FlutterWindow::RegisterUrlSchemes() {
+  wchar_t executable_path[MAX_PATH] = {};
+  if (GetModuleFileNameW(nullptr, executable_path, MAX_PATH) == 0) {
+    return;
+  }
+
+  const std::wstring command =
+      L"\"" + std::wstring(executable_path) + L"\" \"%1\"";
+  for (const wchar_t* scheme : {L"happ", L"siegeconnect"}) {
+    const std::wstring scheme_key =
+        L"Software\\Classes\\" + std::wstring(scheme);
+    HKEY key = nullptr;
+    if (RegCreateKeyExW(HKEY_CURRENT_USER, scheme_key.c_str(), 0, nullptr, 0,
+                        KEY_WRITE, nullptr, &key, nullptr) != ERROR_SUCCESS) {
+      continue;
+    }
+
+    const std::wstring label = L"URL:SiegeConnect Subscription Link";
+    RegSetValueExW(key, nullptr, 0, REG_SZ,
+                   reinterpret_cast<const BYTE*>(label.c_str()),
+                   static_cast<DWORD>((label.size() + 1) * sizeof(wchar_t)));
+    const wchar_t empty[] = L"";
+    RegSetValueExW(key, L"URL Protocol", 0, REG_SZ,
+                   reinterpret_cast<const BYTE*>(empty), sizeof(empty));
+    RegCloseKey(key);
+
+    const std::wstring command_key = scheme_key + L"\\shell\\open\\command";
+    if (RegCreateKeyExW(HKEY_CURRENT_USER, command_key.c_str(), 0, nullptr, 0,
+                        KEY_WRITE, nullptr, &key, nullptr) != ERROR_SUCCESS) {
+      continue;
+    }
+    RegSetValueExW(key, nullptr, 0, REG_SZ,
+                   reinterpret_cast<const BYTE*>(command.c_str()),
+                   static_cast<DWORD>((command.size() + 1) * sizeof(wchar_t)));
+    RegCloseKey(key);
+  }
+}
+
 std::wstring FlutterWindow::Utf8ToWide(const std::string& value) {
   if (value.empty()) {
     return {};
@@ -269,6 +363,25 @@ std::wstring FlutterWindow::Utf8ToWide(const std::string& value) {
   MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value.data(),
                       static_cast<int>(value.size()), result.data(),
                       wide_size);
+  return result;
+}
+
+std::string FlutterWindow::WideToUtf8(const std::wstring& value) {
+  if (value.empty()) {
+    return {};
+  }
+
+  const int utf8_size = WideCharToMultiByte(
+      CP_UTF8, WC_ERR_INVALID_CHARS, value.data(),
+      static_cast<int>(value.size()), nullptr, 0, nullptr, nullptr);
+  if (utf8_size <= 0) {
+    return {};
+  }
+
+  std::string result(utf8_size, '\0');
+  WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, value.data(),
+                      static_cast<int>(value.size()), result.data(),
+                      utf8_size, nullptr, nullptr);
   return result;
 }
 

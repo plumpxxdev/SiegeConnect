@@ -40,7 +40,7 @@ using System.Windows.Forms;
 internal static class Program
 {
     internal const string AppName = "SiegeConnect";
-    internal const string AppVersion = "0.1.6";
+    internal const string AppVersion = "0.1.7";
     internal const string TaskName = "SiegeConnectMihomo";
 
     [STAThread]
@@ -93,6 +93,7 @@ internal static class Program
         string installDir = InstallerPaths.InstallDir;
         InstallerActions.StopSiegeConnectProcesses(installDir);
         InstallerActions.UnregisterTunTask();
+        InstallerActions.UnregisterUrlProtocols();
         InstallerActions.DeleteShortcuts();
         InstallerActions.DeleteUninstallEntry();
         InstallerActions.ScheduleDirectoryRemoval(installDir);
@@ -325,7 +326,7 @@ internal sealed class InstallerWizard : Form
             next.Text = "Установить";
             AddParagraph(
                 "Папка установки:\r\n" + InstallerPaths.InstallDir + "\r\n\r\n" +
-                "Будет установлен SiegeConnect, Mihomo, фоновая задача для TUN без постоянного UAC и ярлыки по выбранным параметрам.");
+                "Будет установлен SiegeConnect, Mihomo, фоновая задача для TUN без постоянного UAC, deep link happ://add/... и ярлыки по выбранным параметрам.");
         }
         else if (page == 3)
         {
@@ -500,7 +501,10 @@ internal static class InstallerActions
         progress(34, "Распаковка файлов приложения...");
         ExtractPayload(installDir);
 
-        progress(58, "Регистрация фонового TUN-компонента...");
+        progress(54, "Регистрация deep link...");
+        RegisterUrlProtocols(installDir);
+
+        progress(60, "Регистрация фонового TUN-компонента...");
         try
         {
             RegisterTunTask(installDir, runtimeDir);
@@ -681,6 +685,53 @@ Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal
     {
         RunIgnore("schtasks.exe", "/End /TN " + Quote(Program.TaskName));
         RunIgnore("schtasks.exe", "/Delete /TN " + Quote(Program.TaskName) + " /F");
+    }
+
+    internal static void RegisterUrlProtocols(string installDir)
+    {
+        string appExe = Path.Combine(installDir, "siegeconnect.exe");
+        foreach (string scheme in new string[] { "happ", "siegeconnect" })
+        {
+            using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Classes\" + scheme))
+            {
+                key.SetValue("", "URL:SiegeConnect Subscription Link", RegistryValueKind.String);
+                key.SetValue("URL Protocol", "", RegistryValueKind.String);
+            }
+
+            using (RegistryKey command = Registry.CurrentUser.CreateSubKey(@"Software\Classes\" + scheme + @"\shell\open\command"))
+            {
+                command.SetValue("", Quote(appExe) + " \"%1\"", RegistryValueKind.String);
+            }
+        }
+    }
+
+    internal static void UnregisterUrlProtocols()
+    {
+        foreach (string scheme in new string[] { "happ", "siegeconnect" })
+        {
+            string command = "";
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\" + scheme + @"\shell\open\command"))
+                {
+                    command = Convert.ToString(key == null ? null : key.GetValue("")) ?? "";
+                }
+            }
+            catch
+            {
+            }
+
+            if (command.IndexOf("SiegeConnect", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                try
+                {
+                    Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\" + scheme, false);
+                }
+                catch
+                {
+                }
+            }
+        }
     }
 
     internal static void StopSiegeConnectProcesses(string installDir)

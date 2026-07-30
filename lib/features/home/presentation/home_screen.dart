@@ -9,6 +9,7 @@ import '../../../shared/countries.dart';
 import '../../../shared/privacy.dart';
 import '../../../shared/user_facing_error.dart';
 import '../../../shared/widgets/async_value_view.dart';
+import '../../deeplink/application/deep_link_parser.dart';
 import '../../mihomo/application/mihomo_controller.dart';
 import '../../mihomo/domain/connection_state.dart';
 import '../../settings/application/settings_controller.dart';
@@ -27,6 +28,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   static const _trayChannel = MethodChannel(AppConstants.trayChannel);
+  static const _deepLinkChannel = MethodChannel(AppConstants.deepLinkChannel);
 
   bool _sortByPing = true;
   bool _pingingAll = false;
@@ -39,16 +41,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _refreshingAll = false;
   String? _lastTrayTooltip;
   bool _exitingFromTray = false;
+  String? _lastDeepLink;
+  DateTime? _lastDeepLinkAt;
 
   @override
   void initState() {
     super.initState();
     _trayChannel.setMethodCallHandler(_handleTrayCommand);
+    _deepLinkChannel.setMethodCallHandler(_handleDeepLinkCommand);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _consumeInitialDeepLink();
+      }
+    });
   }
 
   @override
   void dispose() {
     _trayChannel.setMethodCallHandler(null);
+    _deepLinkChannel.setMethodCallHandler(null);
     super.dispose();
   }
 
@@ -75,6 +86,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case 'exitRequested':
         await _exitFromTray();
         return;
+    }
+  }
+
+  Future<void> _handleDeepLinkCommand(MethodCall call) async {
+    if (call.method != 'onLink') {
+      return;
+    }
+
+    final arguments = call.arguments;
+    final rawLink = switch (arguments) {
+      final String value => value,
+      final Map<Object?, Object?> map => map['url']?.toString(),
+      _ => null,
+    };
+    if (rawLink == null || rawLink.trim().isEmpty) {
+      return;
+    }
+
+    await _importFromDeepLink(rawLink);
+  }
+
+  Future<void> _consumeInitialDeepLink() async {
+    try {
+      final rawLink =
+          await _deepLinkChannel.invokeMethod<String>('getInitialLink');
+      if (rawLink == null || rawLink.trim().isEmpty || !mounted) {
+        return;
+      }
+      await _importFromDeepLink(rawLink);
+    } on MissingPluginException {
+      // Native deep links are available only on Android and Windows builds.
     }
   }
 
@@ -449,6 +491,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     await _run(context, () async {
       await ref.read(subscriptionRepositoryProvider).importFromUrl(url);
+    });
+  }
+
+  Future<void> _importFromDeepLink(String rawLink) async {
+    final now = DateTime.now();
+    if (_lastDeepLink == rawLink &&
+        _lastDeepLinkAt != null &&
+        now.difference(_lastDeepLinkAt!) < const Duration(seconds: 3)) {
+      return;
+    }
+    _lastDeepLink = rawLink;
+    _lastDeepLinkAt = now;
+
+    final subscriptionUrl = DeepLinkParser.extractSubscriptionUrl(rawLink);
+    if (subscriptionUrl == null) {
+      _showSnack(
+          'Ссылка не похожа на подписку. Нужен формат happ://add/https://...');
+      return;
+    }
+
+    await _run(context, () async {
+      await ref
+          .read(subscriptionRepositoryProvider)
+          .importFromUrl(subscriptionUrl);
+      if (mounted) {
+        _showSnack('Подписка добавлена из deep link.');
+      }
     });
   }
 
