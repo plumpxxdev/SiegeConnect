@@ -326,7 +326,7 @@ internal sealed class InstallerWizard : Form
             next.Text = "Установить";
             AddParagraph(
                 "Папка установки:\r\n" + InstallerPaths.InstallDir + "\r\n\r\n" +
-                "Будет установлен SiegeConnect, Mihomo, фоновая задача для TUN без постоянного UAC, deep link happ://add/... и ярлыки по выбранным параметрам.");
+                "Будет установлен SiegeConnect, Mihomo, фоновая задача для TUN без постоянного UAC, deep link siegeconnect://add/... и ярлыки по выбранным параметрам.");
         }
         else if (page == 3)
         {
@@ -690,7 +690,8 @@ Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal
     internal static void RegisterUrlProtocols(string installDir)
     {
         string appExe = Path.Combine(installDir, "siegeconnect.exe");
-        foreach (string scheme in new string[] { "happ", "siegeconnect" })
+        UnregisterOwnedUrlProtocol("happ");
+        foreach (string scheme in new string[] { "siegeconnect" })
         {
             using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Classes\" + scheme))
             {
@@ -707,30 +708,35 @@ Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal
 
     internal static void UnregisterUrlProtocols()
     {
-        foreach (string scheme in new string[] { "happ", "siegeconnect" })
-        {
-            string command = "";
-            try
-            {
-                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\" + scheme + @"\shell\open\command"))
-                {
-                    command = Convert.ToString(key == null ? null : key.GetValue("")) ?? "";
-                }
-            }
-            catch
-            {
-            }
+        UnregisterOwnedUrlProtocol("siegeconnect");
+        UnregisterOwnedUrlProtocol("happ");
+    }
 
-            if (command.IndexOf("SiegeConnect", StringComparison.OrdinalIgnoreCase) >= 0)
+    private static void UnregisterOwnedUrlProtocol(string scheme)
+    {
+        string command = "";
+        try
+        {
+            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\" + scheme + @"\shell\open\command"))
             {
-                try
-                {
-                    Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\" + scheme, false);
-                }
-                catch
-                {
-                }
+                command = Convert.ToString(key == null ? null : key.GetValue("")) ?? "";
             }
+        }
+        catch
+        {
+        }
+
+        if (command.IndexOf("SiegeConnect", StringComparison.OrdinalIgnoreCase) < 0)
+        {
+            return;
+        }
+
+        try
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\" + scheme, false);
+        }
+        catch
+        {
         }
     }
 

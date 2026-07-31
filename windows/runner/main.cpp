@@ -29,8 +29,7 @@ std::string ToLowerAscii(std::string value) {
 
 bool IsDeepLinkArgument(const std::string& argument) {
   const std::string lower = ToLowerAscii(argument);
-  return lower.rfind("happ://", 0) == 0 ||
-         lower.rfind("siegeconnect://", 0) == 0;
+  return lower.rfind("siegeconnect://", 0) == 0;
 }
 
 std::optional<std::string> FindDeepLinkArgument(

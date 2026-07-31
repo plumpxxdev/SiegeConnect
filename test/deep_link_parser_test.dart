@@ -3,9 +3,9 @@ import 'package:siegeconnect/features/deeplink/application/deep_link_parser.dart
 
 void main() {
   group('DeepLinkParser', () {
-    test('extracts an encoded Happ subscription url', () {
+    test('extracts an encoded SiegeConnect subscription url', () {
       final url = DeepLinkParser.extractSubscriptionUrl(
-        'happ://add/https%3A%2F%2Fexample.com%2Fsub%3Ftoken%3Dabc%26name%3Dmain',
+        'siegeconnect://add/https%3A%2F%2Fexample.com%2Fsub%3Ftoken%3Dabc%26name%3Dmain',
       );
 
       expect(url, 'https://example.com/sub?token=abc&name=main');
@@ -13,7 +13,7 @@ void main() {
 
     test('keeps query parameters from an unencoded nested url', () {
       final url = DeepLinkParser.extractSubscriptionUrl(
-        'happ://add/https://example.com/sub?token=abc&name=main',
+        'siegeconnect://add/https://example.com/sub?token=abc&name=main',
       );
 
       expect(url, 'https://example.com/sub?token=abc&name=main');
@@ -28,8 +28,10 @@ void main() {
     });
 
     test('rejects unsupported links', () {
-      expect(DeepLinkParser.extractSubscriptionUrl('happ://open/settings'),
-          isNull);
+      expect(
+        DeepLinkParser.extractSubscriptionUrl('happ://add/https://example.com'),
+        isNull,
+      );
       expect(DeepLinkParser.extractSubscriptionUrl('ftp://example.com/sub'),
           isNull);
     });

@@ -38,6 +38,7 @@ class FlutterWindow : public Win32Window {
   void RequestExitFromTray();
   void NotifyDeepLink(const std::string& url);
   void RegisterUrlSchemes();
+  void RemoveUrlSchemeIfOwned(const std::wstring& scheme);
   static std::wstring Utf8ToWide(const std::string& value);
   static std::string WideToUtf8(const std::wstring& value);
   static bool GetBoolValue(const flutter::EncodableMap& map,

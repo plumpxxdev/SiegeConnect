@@ -507,7 +507,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final subscriptionUrl = DeepLinkParser.extractSubscriptionUrl(rawLink);
     if (subscriptionUrl == null) {
       _showSnack(
-          'Ссылка не похожа на подписку. Нужен формат happ://add/https://...');
+        'Ссылка не похожа на подписку. Нужен формат siegeconnect://add/https://...',
+      );
       return;
     }
 

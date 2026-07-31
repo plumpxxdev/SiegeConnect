@@ -5,6 +5,8 @@
 #include <strsafe.h>
 #include <windows.h>
 
+#include <algorithm>
+#include <cwctype>
 #include <optional>
 #include <utility>
 #include <variant>
@@ -315,9 +317,11 @@ void FlutterWindow::RegisterUrlSchemes() {
     return;
   }
 
+  RemoveUrlSchemeIfOwned(L"happ");
+
   const std::wstring command =
       L"\"" + std::wstring(executable_path) + L"\" \"%1\"";
-  for (const wchar_t* scheme : {L"happ", L"siegeconnect"}) {
+  for (const wchar_t* scheme : {L"siegeconnect"}) {
     const std::wstring scheme_key =
         L"Software\\Classes\\" + std::wstring(scheme);
     HKEY key = nullptr;
@@ -345,6 +349,37 @@ void FlutterWindow::RegisterUrlSchemes() {
                    static_cast<DWORD>((command.size() + 1) * sizeof(wchar_t)));
     RegCloseKey(key);
   }
+}
+
+void FlutterWindow::RemoveUrlSchemeIfOwned(const std::wstring& scheme) {
+  const std::wstring command_key =
+      L"Software\\Classes\\" + scheme + L"\\shell\\open\\command";
+  HKEY key = nullptr;
+  if (RegOpenKeyExW(HKEY_CURRENT_USER, command_key.c_str(), 0, KEY_READ,
+                    &key) != ERROR_SUCCESS) {
+    return;
+  }
+
+  wchar_t command[2048] = {};
+  DWORD command_size = sizeof(command);
+  const LSTATUS read_status =
+      RegQueryValueExW(key, nullptr, nullptr, nullptr,
+                       reinterpret_cast<LPBYTE>(command), &command_size);
+  RegCloseKey(key);
+  if (read_status != ERROR_SUCCESS) {
+    return;
+  }
+
+  std::wstring lower_command(command);
+  std::transform(lower_command.begin(), lower_command.end(),
+                 lower_command.begin(),
+                 [](wchar_t value) { return std::towlower(value); });
+  if (lower_command.find(L"siegeconnect") == std::wstring::npos) {
+    return;
+  }
+
+  const std::wstring scheme_key = L"Software\\Classes\\" + scheme;
+  RegDeleteTreeW(HKEY_CURRENT_USER, scheme_key.c_str());
 }
 
 std::wstring FlutterWindow::Utf8ToWide(const std::string& value) {

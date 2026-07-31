@@ -2,7 +2,6 @@ class DeepLinkParser {
   const DeepLinkParser._();
 
   static const supportedSchemes = <String>{
-    'happ',
     'siegeconnect',
   };
 

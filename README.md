@@ -29,13 +29,12 @@ SiegeConnect is an MIT-licensed cross-platform VPN client shell for Remnawave su
 
 SiegeConnect registers subscription import links on Android and Windows:
 
-- `happ://add/{{SUBSCRIPTION_LINK}}`
 - `siegeconnect://add/{{SUBSCRIPTION_LINK}}`
 
 The subscription URL may be encoded, for example:
 
 ```text
-happ://add/https%3A%2F%2Fexample.com%2Fsub%3Ftoken%3Dabc
+siegeconnect://add/https%3A%2F%2Fexample.com%2Fsub%3Ftoken%3Dabc
 ```
 
 On Windows, a link opened while SiegeConnect is already running is forwarded to
