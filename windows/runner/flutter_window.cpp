@@ -13,6 +13,7 @@
 
 #include "flutter/generated_plugin_registrant.h"
 #include "resource.h"
+#include "utils.h"
 
 FlutterWindow::FlutterWindow(
     const flutter::DartProject& project,
@@ -105,9 +106,28 @@ bool FlutterWindow::OnCreate() {
           if (initial_deep_link_) {
             result->Success(flutter::EncodableValue(*initial_deep_link_));
             initial_deep_link_.reset();
+          } else if (auto pending_deep_link = ConsumePendingDeepLink()) {
+            result->Success(
+                flutter::EncodableValue(WideToUtf8(*pending_deep_link)));
           } else {
             result->Success();
           }
+          return;
+        }
+
+        if (call.method_name() == "consumePendingLink") {
+          if (auto pending_deep_link = ConsumePendingDeepLink()) {
+            result->Success(
+                flutter::EncodableValue(WideToUtf8(*pending_deep_link)));
+          } else {
+            result->Success();
+          }
+          return;
+        }
+
+        if (call.method_name() == "clearPendingLink") {
+          ClearPendingDeepLink();
+          result->Success();
           return;
         }
 

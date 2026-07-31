@@ -2,6 +2,7 @@
 #define RUNNER_UTILS_H_
 
 #include <string>
+#include <optional>
 #include <vector>
 
 // Creates a console for the process, and redirects stdout and stderr to
@@ -15,5 +16,14 @@ std::string Utf8FromUtf16(const wchar_t* utf16_string);
 // Gets the command line arguments passed in as a std::vector<std::string>,
 // encoded in UTF-8. Returns an empty std::vector<std::string> on failure.
 std::vector<std::string> GetCommandLineArguments();
+
+// Stores a deep link for an already running SiegeConnect instance.
+void StorePendingDeepLink(const std::wstring& value);
+
+// Returns and clears a pending deep link, if another process left one.
+std::optional<std::wstring> ConsumePendingDeepLink();
+
+// Clears a pending deep link without returning it.
+void ClearPendingDeepLink();
 
 #endif  // RUNNER_UTILS_H_

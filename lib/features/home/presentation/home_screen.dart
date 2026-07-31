@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +13,7 @@ import '../../../shared/privacy.dart';
 import '../../../shared/user_facing_error.dart';
 import '../../../shared/widgets/async_value_view.dart';
 import '../../deeplink/application/deep_link_parser.dart';
+import '../../deeplink/application/startup_deep_links.dart';
 import '../../mihomo/application/mihomo_controller.dart';
 import '../../mihomo/domain/connection_state.dart';
 import '../../settings/application/settings_controller.dart';
@@ -43,6 +47,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _exitingFromTray = false;
   String? _lastDeepLink;
   DateTime? _lastDeepLinkAt;
+  Timer? _pendingDeepLinkTimer;
+  bool _checkingPendingDeepLink = false;
 
   @override
   void initState() {
@@ -51,13 +57,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _deepLinkChannel.setMethodCallHandler(_handleDeepLinkCommand);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        _consumeStartupDeepLinks();
         _consumeInitialDeepLink();
       }
     });
+    if (Platform.isWindows) {
+      _pendingDeepLinkTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => _consumePendingDeepLink(),
+      );
+    }
   }
 
   @override
   void dispose() {
+    _pendingDeepLinkTimer?.cancel();
     _trayChannel.setMethodCallHandler(null);
     _deepLinkChannel.setMethodCallHandler(null);
     super.dispose();
@@ -117,6 +131,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await _importFromDeepLink(rawLink);
     } on MissingPluginException {
       // Native deep links are available only on Android and Windows builds.
+    }
+  }
+
+  Future<void> _consumePendingDeepLink() async {
+    if (!mounted || _checkingPendingDeepLink) {
+      return;
+    }
+
+    _checkingPendingDeepLink = true;
+    try {
+      final rawLink =
+          await _deepLinkChannel.invokeMethod<String>('consumePendingLink');
+      if (rawLink == null || rawLink.trim().isEmpty || !mounted) {
+        return;
+      }
+      await _importFromDeepLink(rawLink);
+    } on MissingPluginException {
+      _pendingDeepLinkTimer?.cancel();
+      _pendingDeepLinkTimer = null;
+    } finally {
+      _checkingPendingDeepLink = false;
+    }
+  }
+
+  Future<void> _clearPendingDeepLink() async {
+    try {
+      await _deepLinkChannel.invokeMethod<void>('clearPendingLink');
+    } on MissingPluginException {
+      // Native deep links are available only on Android and Windows builds.
+    }
+  }
+
+  void _consumeStartupDeepLinks() {
+    for (final rawLink in ref.read(startupDeepLinksProvider)) {
+      if (DeepLinkParser.extractSubscriptionUrl(rawLink) != null) {
+        unawaited(_importFromDeepLink(rawLink));
+        return;
+      }
     }
   }
 
@@ -498,7 +550,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final now = DateTime.now();
     if (_lastDeepLink == rawLink &&
         _lastDeepLinkAt != null &&
-        now.difference(_lastDeepLinkAt!) < const Duration(seconds: 3)) {
+        now.difference(_lastDeepLinkAt!) < const Duration(minutes: 2)) {
       return;
     }
     _lastDeepLink = rawLink;
@@ -516,6 +568,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref
           .read(subscriptionRepositoryProvider)
           .importFromUrl(subscriptionUrl);
+      await _clearPendingDeepLink();
       if (mounted) {
         _showSnack('Подписка добавлена из deep link.');
       }

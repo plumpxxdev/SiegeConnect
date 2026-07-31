@@ -62,7 +62,20 @@ std::wstring WideFromUtf8(const std::string& value) {
 }
 
 bool ActivateExistingInstance(const std::optional<std::string>& deep_link) {
-  HWND window = FindWindowW(kWindowClassName, L"SiegeConnect");
+  std::wstring payload;
+  if (deep_link) {
+    payload = WideFromUtf8(*deep_link);
+    StorePendingDeepLink(payload);
+  }
+
+  HWND window = nullptr;
+  for (int attempt = 0; attempt < 20; attempt++) {
+    window = FindWindowW(kWindowClassName, L"SiegeConnect");
+    if (window) {
+      break;
+    }
+    Sleep(100);
+  }
   if (!window) {
     return false;
   }
@@ -70,17 +83,14 @@ bool ActivateExistingInstance(const std::optional<std::string>& deep_link) {
   ShowWindow(window, SW_SHOWNORMAL);
   SetForegroundWindow(window);
 
-  if (deep_link) {
-    const std::wstring payload = WideFromUtf8(*deep_link);
-    if (!payload.empty()) {
-      COPYDATASTRUCT copy_data = {};
-      copy_data.dwData = kDeepLinkCopyData;
-      copy_data.cbData =
-          static_cast<DWORD>((payload.size() + 1) * sizeof(wchar_t));
-      copy_data.lpData = const_cast<wchar_t*>(payload.c_str());
-      SendMessageW(window, WM_COPYDATA, 0,
-                   reinterpret_cast<LPARAM>(&copy_data));
-    }
+  if (!payload.empty()) {
+    COPYDATASTRUCT copy_data = {};
+    copy_data.dwData = kDeepLinkCopyData;
+    copy_data.cbData =
+        static_cast<DWORD>((payload.size() + 1) * sizeof(wchar_t));
+    copy_data.lpData = const_cast<wchar_t*>(payload.c_str());
+    SendMessageW(window, WM_COPYDATA, 0,
+                 reinterpret_cast<LPARAM>(&copy_data));
   }
 
   return true;

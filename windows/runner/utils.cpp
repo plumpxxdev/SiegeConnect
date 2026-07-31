@@ -6,6 +6,15 @@
 #include <windows.h>
 
 #include <iostream>
+#include <optional>
+#include <vector>
+
+namespace {
+
+constexpr const wchar_t kRegistryKey[] = L"Software\\SiegeConnect";
+constexpr const wchar_t kPendingDeepLinkValue[] = L"PendingDeepLink";
+
+}  // namespace
 
 void CreateAndAttachConsole() {
   if (::AllocConsole()) {
@@ -66,4 +75,67 @@ std::string Utf8FromUtf16(const wchar_t* utf16_string) {
     return std::string();
   }
   return utf8_string;
+}
+
+void StorePendingDeepLink(const std::wstring& value) {
+  if (value.empty()) {
+    return;
+  }
+
+  HKEY key = nullptr;
+  if (RegCreateKeyExW(HKEY_CURRENT_USER, kRegistryKey, 0, nullptr, 0,
+                      KEY_SET_VALUE, nullptr, &key, nullptr) !=
+      ERROR_SUCCESS) {
+    return;
+  }
+
+  RegSetValueExW(key, kPendingDeepLinkValue, 0, REG_SZ,
+                 reinterpret_cast<const BYTE*>(value.c_str()),
+                 static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t)));
+  RegCloseKey(key);
+}
+
+std::optional<std::wstring> ConsumePendingDeepLink() {
+  HKEY key = nullptr;
+  if (RegOpenKeyExW(HKEY_CURRENT_USER, kRegistryKey, 0,
+                    KEY_QUERY_VALUE | KEY_SET_VALUE, &key) != ERROR_SUCCESS) {
+    return std::nullopt;
+  }
+
+  DWORD type = 0;
+  DWORD byte_count = 0;
+  LSTATUS status = RegQueryValueExW(key, kPendingDeepLinkValue, nullptr, &type,
+                                    nullptr, &byte_count);
+  if (status != ERROR_SUCCESS ||
+      (type != REG_SZ && type != REG_EXPAND_SZ) || byte_count == 0) {
+    RegCloseKey(key);
+    return std::nullopt;
+  }
+
+  std::vector<wchar_t> buffer(byte_count / sizeof(wchar_t) + 1, L'\0');
+  status = RegQueryValueExW(
+      key, kPendingDeepLinkValue, nullptr, &type,
+      reinterpret_cast<LPBYTE>(buffer.data()), &byte_count);
+  RegDeleteValueW(key, kPendingDeepLinkValue);
+  RegCloseKey(key);
+
+  if (status != ERROR_SUCCESS) {
+    return std::nullopt;
+  }
+
+  std::wstring value(buffer.data());
+  if (value.empty()) {
+    return std::nullopt;
+  }
+  return value;
+}
+
+void ClearPendingDeepLink() {
+  HKEY key = nullptr;
+  if (RegOpenKeyExW(HKEY_CURRENT_USER, kRegistryKey, 0, KEY_SET_VALUE, &key) !=
+      ERROR_SUCCESS) {
+    return;
+  }
+  RegDeleteValueW(key, kPendingDeepLinkValue);
+  RegCloseKey(key);
 }
