@@ -50,10 +50,13 @@ jobs:
           gh release view $env:GITHUB_REF_NAME *> $null
           if ($LASTEXITCODE -ne 0) {
             gh release create $env:GITHUB_REF_NAME `
-              --title "SiegeConnect $env:GITHUB_REF_NAME" `
-              --notes "SiegeConnect release build with Android APK, Windows setup, TUN fixes, internal DNS and deep link import support." `
+              --title "SiegeConnect $env:GITHUB_REF_NAME - Deep Link + DNS" `
+              --notes-file RELEASE_NOTES.md `
               --latest
           }
+          gh release edit $env:GITHUB_REF_NAME `
+            --title "SiegeConnect $env:GITHUB_REF_NAME - Deep Link + DNS" `
+            --notes-file RELEASE_NOTES.md
           gh release upload $env:GITHUB_REF_NAME `
             "dist/SiegeConnect-Setup.exe#SiegeConnect-Setup.exe" `
             "dist/SiegeConnect-Setup.zip#SiegeConnect-Setup.zip" `

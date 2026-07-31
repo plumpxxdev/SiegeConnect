@@ -39,7 +39,10 @@ jobs:
             gh release delete "v0.1.7" -y --cleanup-tag >/dev/null 2>&1 || true
           fi
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
-            gh release create "$GITHUB_REF_NAME" --title "SiegeConnect $GITHUB_REF_NAME" --notes "SiegeConnect release build with Android APK, Windows setup, TUN fixes, internal DNS and deep link import support."
+            gh release create "$GITHUB_REF_NAME" --title "SiegeConnect $GITHUB_REF_NAME - Deep Link + DNS" --notes-file RELEASE_NOTES.md
+          gh release edit "$GITHUB_REF_NAME" \
+            --title "SiegeConnect $GITHUB_REF_NAME - Deep Link + DNS" \
+            --notes-file RELEASE_NOTES.md
           cp "build/app/outputs/flutter-apk/app-release.apk" "SiegeConnect-Android.apk"
           zip -9 "SiegeConnect-Android.zip" "SiegeConnect-Android.apk"
           gh release delete-asset "$GITHUB_REF_NAME" "app-release.apk" -y >/dev/null 2>&1 || true
