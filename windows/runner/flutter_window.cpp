@@ -107,6 +107,7 @@ bool FlutterWindow::OnCreate() {
             result->Success(flutter::EncodableValue(*initial_deep_link_));
             initial_deep_link_.reset();
           } else if (auto pending_deep_link = ConsumePendingDeepLink()) {
+            ShowFromTray();
             result->Success(
                 flutter::EncodableValue(WideToUtf8(*pending_deep_link)));
           } else {
@@ -117,6 +118,7 @@ bool FlutterWindow::OnCreate() {
 
         if (call.method_name() == "consumePendingLink") {
           if (auto pending_deep_link = ConsumePendingDeepLink()) {
+            ShowFromTray();
             result->Success(
                 flutter::EncodableValue(WideToUtf8(*pending_deep_link)));
           } else {

@@ -45,8 +45,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _refreshingAll = false;
   String? _lastTrayTooltip;
   bool _exitingFromTray = false;
-  String? _lastDeepLink;
-  DateTime? _lastDeepLinkAt;
+  final Set<String> _activeDeepLinkImports = {};
   Timer? _pendingDeepLinkTimer;
   bool _checkingPendingDeepLink = false;
 
@@ -547,32 +546,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _importFromDeepLink(String rawLink) async {
-    final now = DateTime.now();
-    if (_lastDeepLink == rawLink &&
-        _lastDeepLinkAt != null &&
-        now.difference(_lastDeepLinkAt!) < const Duration(minutes: 2)) {
-      return;
-    }
-    _lastDeepLink = rawLink;
-    _lastDeepLinkAt = now;
-
     final subscriptionUrl = DeepLinkParser.extractSubscriptionUrl(rawLink);
     if (subscriptionUrl == null) {
+      await _clearPendingDeepLink();
       _showSnack(
         'Ссылка не похожа на подписку. Нужен формат siegeconnect://add/https://...',
       );
       return;
     }
 
-    await _run(context, () async {
-      await ref
-          .read(subscriptionRepositoryProvider)
-          .importFromUrl(subscriptionUrl);
-      await _clearPendingDeepLink();
-      if (mounted) {
-        _showSnack('Подписка добавлена из deep link.');
-      }
-    });
+    if (!_activeDeepLinkImports.add(subscriptionUrl)) {
+      return;
+    }
+    try {
+      await _run(context, () async {
+        await ref
+            .read(subscriptionRepositoryProvider)
+            .importFromUrl(subscriptionUrl);
+        await _clearPendingDeepLink();
+        if (mounted) {
+          _showSnack('Подписка добавлена из deep link.');
+        }
+      });
+    } finally {
+      _activeDeepLinkImports.remove(subscriptionUrl);
+    }
   }
 
   Future<void> _run(
